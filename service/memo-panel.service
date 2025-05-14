@@ -1,0 +1,22 @@
+[Unit]
+Description=Memo Panel
+ConditionPathExists=/var/app/memo-panel
+After=network.target
+[Service]
+Type=simple
+User=root
+Group=root
+LimitNOFILE=1024
+Restart=always
+RestartSec=2
+RestartSteps=1
+RestartMaxDelaySec=15
+WorkingDirectory=/var/app/memo-panel
+Environment="HOME=/var/app/memo-panel"
+ExecStart=/var/app/memo-panel/memo-panel
+PermissionsStartOnly=true
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=memo-panel
+[Install]
+WantedBy=multi-user.target
