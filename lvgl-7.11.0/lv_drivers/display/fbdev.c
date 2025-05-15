@@ -58,9 +58,10 @@ struct bsd_fb_fix_info {
  *  STATIC PROTOTYPES
  **********************/
 
-static void rotate90_rgb565(const uint16_t *src, uint16_t *dst, int32_t src_width, int32_t src_height,
-		int32_t src_stride,
-		int32_t dst_stride);
+void draw_rotated_region_rgb565(
+		const uint16_t *src, int src_W, int src_H,
+		int area_x, int area_y, int area_w, int area_h,
+		uint16_t *dst, int dst_stride);
 
 /**********************
  *  STATIC VARIABLES
