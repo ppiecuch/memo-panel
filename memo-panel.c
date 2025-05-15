@@ -372,6 +372,7 @@ static void hal_init() {
 	lv_disp_drv_init(&disp_drv);
 	disp_drv.flush_cb = fbdev_flush; // flushes the internal graphical buffer to the frame buffer
 	disp_drv.buffer = &disp_buf; // set teh display buffere reference in the driver
+	disp_drv.rotate = LV_DISP_ROT_90;
 	lv_disp_drv_register(&disp_drv);
 
 	// Initialize and register a pointer device driver
