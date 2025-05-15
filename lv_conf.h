@@ -16,8 +16,13 @@
  *====================*/
 
 /* Maximal horizontal and vertical resolution to support by the library.*/
+#ifdef __linux__
+#define LV_HOR_RES_MAX          (480)
+#define LV_VER_RES_MAX          (1280)
+#else
 #define LV_HOR_RES_MAX          (1280)
 #define LV_VER_RES_MAX          (480)
+#endif
 
 /* Color depth:
  * - 1:  1 byte per pixel
@@ -333,7 +338,7 @@ typedef void * lv_indev_drv_user_data_t;            /*Type of user data in the i
 /* Montserrat fonts with bpp = 4
  * https://fonts.google.com/specimen/Montserrat  */
 #define LV_FONT_MONTSERRAT_12    1
-#define LV_FONT_MONTSERRAT_14    0
+#define LV_FONT_MONTSERRAT_14    1
 #define LV_FONT_MONTSERRAT_16    1
 #define LV_FONT_MONTSERRAT_18    0
 #define LV_FONT_MONTSERRAT_20    0
@@ -687,6 +692,13 @@ typedef void * lv_obj_user_data_t;
 #if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_WARNINGS)    /* Disable warnings for Visual Studio*/
 #  define _CRT_SECURE_NO_WARNINGS
 #endif
+
+/*==================
+ * 3rd party libraries
+ *==================*/
+
+/*PNG decoder library*/
+#define LV_USE_PNG 0
 
 /*--END OF LV_CONF_H--*/
 
