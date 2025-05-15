@@ -33,6 +33,16 @@
 #define BLUE "\x1B[34m"
 #define RED "\x1B[31m"
 
+#if LVGL > 7
+#define lv_style_set_border_width(st, s, o) lv_style_set_border_width(st, o)
+#define lv_style_set_text_font(st, s, o) lv_style_set_text_font(st, o)
+#define lv_style_set_pad_top(st, s, o) lv_style_set_pad_top(st, o)
+#define lv_style_set_pad_bottom(st, s, o) lv_style_set_pad_bottom(st, o)
+#define lv_style_set_pad_left(st, s, o) lv_style_set_pad_left(st, o)
+#define lv_style_set_pad_right(st, s, o) lv_style_set_pad_right(st, o)
+#define lv_style_set_pad_inner(st, s, o) lv_style_set_pad_inner(st, o)
+#endif
+
 LV_FONT_DECLARE(digital_clock)
 
 // Config options
@@ -48,7 +58,7 @@ static lv_disp_buf_t disp_buf;
 
 // Static buffer(s). The second buffer is optional
 static lv_color_t lvbuf1[LV_BUF_SIZE];
-static lv_color_t lvbuf2[LV_BUF_SIZE];
+// static lv_color_t lvbuf2[LV_BUF_SIZE];
 
 // Display info and controls
 static const char *DAY[] = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
@@ -265,12 +275,10 @@ static void panel_init(char *prog_name) {
 	font_large = &lv_font_montserrat_24;
 	font_normal = &lv_font_montserrat_16;
 
-#if LV_USE_THEME_MATERIAL
-	if (LV_THEME_DEFAULT_INIT == lv_theme_material_init) {
-		LV_THEME_DEFAULT_INIT(lv_theme_get_color_primary(), lv_theme_get_color_primary(),
-				LV_THEME_MATERIAL_FLAG_LIGHT,
-				lv_theme_get_font_small(), lv_theme_get_font_normal(), lv_theme_get_font_subtitle(), lv_theme_get_font_title());
-	}
+#if LV_THEME_DEFAULT_INIT
+	LV_THEME_DEFAULT_INIT(lv_theme_get_color_primary(), lv_theme_get_color_primary(),
+			LV_THEME_DEFAULT_FLAG,
+			lv_theme_get_font_small(), lv_theme_get_font_normal(), lv_theme_get_font_subtitle(), lv_theme_get_font_title());
 #endif
 
 	lv_style_init(&style_large);
@@ -305,6 +313,7 @@ static void panel_init(char *prog_name) {
 	lv_cont_set_layout(memo_panel, LV_LAYOUT_ROW_TOP);
 
 	lv_style_init(&style_memo);
+
 	lv_style_set_border_width(&style_memo, LV_STATE_DEFAULT, 0);
 	lv_style_set_pad_top(&style_memo, LV_STATE_DEFAULT, 0);
 	lv_style_set_pad_bottom(&style_memo, LV_STATE_DEFAULT, 0);
@@ -365,11 +374,11 @@ static void panel_init(char *prog_name) {
 
 #ifdef __linux__
 static void hal_init() {
-	fbdev_init(); //Linux frame buffer device init
+	fbdev_init(); // Linux frame buffer device init
 	evdev_init(); // Touch pointer device init
 
 	// Initialize `disp_buf` with the display buffer(s)
-	lv_disp_buf_init(&disp_buf, lvbuf1, lvbuf2, LV_BUF_SIZE);
+	lv_disp_buf_init(&disp_buf, lvbuf1, NULL, LV_BUF_SIZE);
 
 	// Initialize and register a display driver
 	lv_disp_drv_t disp_drv;
@@ -395,7 +404,7 @@ static int tick_thread(void *data) {
 	(void)data;
 	while (1) {
 		SDL_Delay(5);
-		lv_tick_inc(5); /* Tell LittelvGL that 5 milliseconds were elapsed */
+		lv_tick_inc(5); /* Tell LVGL that 5 milliseconds were elapsed */
 	}
 	return 0;
 }
@@ -409,7 +418,7 @@ static void hal_init() {
 	SDL_CreateThread(tick_thread, "tick", NULL);
 
 	/*Create a display buffer*/
-	lv_disp_buf_init(&disp_buf, lvbuf1, lvbuf2, LV_BUF_SIZE);
+	lv_disp_buf_init(&disp_buf, lvbuf1, NULL, LV_BUF_SIZE);
 
 	/*Create a display*/
 	lv_disp_drv_t disp_drv;

@@ -392,30 +392,46 @@ typedef void * lv_font_user_data_t;
 
 /* No theme, you can apply your styles as you need
  * No flags. Set LV_THEME_DEFAULT_FLAG 0 */
- #define LV_USE_THEME_EMPTY       1
+#define LV_USE_THEME_EMPTY       0
 
 /*Simple to the create your theme based on it
  * No flags. Set LV_THEME_DEFAULT_FLAG 0 */
- #define LV_USE_THEME_TEMPLATE    1
+#if LVGL == 7
+ #define LV_USE_THEME_TEMPLATE    0
+#else
+ #define LV_USE_THEME_BASIC       0
+#endif
 
 /* A fast and impressive theme.
  * Flags:
  * LV_THEME_MATERIAL_FLAG_LIGHT: light theme
  * LV_THEME_MATERIAL_FLAG_DARK: dark theme*/
+#if LVGL == 7
  #define LV_USE_THEME_MATERIAL    1
+ #define LV_USE_THEME_DEFAULT     0
+#else
+ #define LV_USE_THEME_DEFAULT     1
+ #define LV_USE_THEME_MATERIAL    0
+#endif
 
 /* Mono-color theme for monochrome displays.
  * If LV_THEME_DEFAULT_COLOR_PRIMARY is LV_COLOR_BLACK the
  * texts and borders will be black and the background will be
  * white. Else the colors are inverted.
  * No flags. Set LV_THEME_DEFAULT_FLAG 0 */
- #define LV_USE_THEME_MONO        1
+#define LV_USE_THEME_MONO        0
 
 #define LV_THEME_DEFAULT_INCLUDE            <stdint.h>      /*Include a header for the init. function*/
-#define LV_THEME_DEFAULT_INIT               lv_theme_material_init
+#if LV_USE_THEME_MATERIAL
+ #define LV_THEME_DEFAULT_INIT               lv_theme_material_init
+ #define LV_THEME_DEFAULT_FLAG               LV_THEME_MATERIAL_FLAG_LIGHT
+#endif
+#if LV_USE_THEME_DEFAULT
+ #define LV_THEME_DEFAULT_INIT               lv_theme_default_init
+ #define LV_THEME_DEFAULT_FLAG               0
+#endif
 #define LV_THEME_DEFAULT_COLOR_PRIMARY      LV_COLOR_RED
 #define LV_THEME_DEFAULT_COLOR_SECONDARY    LV_COLOR_BLUE
-#define LV_THEME_DEFAULT_FLAG               LV_THEME_MATERIAL_FLAG_LIGHT
 #define LV_THEME_DEFAULT_FONT_SMALL         &lv_font_montserrat_16
 #define LV_THEME_DEFAULT_FONT_NORMAL        &lv_font_montserrat_16
 #define LV_THEME_DEFAULT_FONT_SUBTITLE      &lv_font_montserrat_16
