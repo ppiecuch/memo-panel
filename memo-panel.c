@@ -275,7 +275,7 @@ static void panel_init(char *prog_name) {
 	font_large = &lv_font_montserrat_24;
 	font_normal = &lv_font_montserrat_16;
 
-#if LV_THEME_DEFAULT_INIT
+#if LV_USE_THEME_MATERIAL
 	LV_THEME_DEFAULT_INIT(lv_theme_get_color_primary(), lv_theme_get_color_primary(),
 			LV_THEME_DEFAULT_FLAG,
 			lv_theme_get_font_small(), lv_theme_get_font_normal(), lv_theme_get_font_subtitle(), lv_theme_get_font_title());
