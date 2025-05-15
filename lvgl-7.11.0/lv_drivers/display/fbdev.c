@@ -187,12 +187,23 @@ void fbdev_flush(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_p)
 	/*16 bit per pixel*/
 	else if (vinfo.bits_per_pixel == 16) {
 		uint16_t *fbp16 = (uint16_t *)fbp;
-		int32_t y;
-		for (y = act_y1; y <= act_y2; y++) {
-			location = (act_x1 + vinfo.xoffset) + (y + vinfo.yoffset) * finfo.line_length / 2;
-			memcpy(&fbp16[location], (uint32_t *)color_p, (act_x2 - act_x1 + 1) * 2);
-			color_p += w;
-		}
+		// int32_t y;
+		// for (y = act_y1; y <= act_y2; y++) {
+		// 	location = (act_x1 + vinfo.xoffset) + (y + vinfo.yoffset) * finfo.line_length / 2;
+		// 	memcpy(&fbp16[location], (uint32_t *)color_p, (act_x2 - act_x1 + 1) * 2);
+		// 	color_p += w;
+		// }
+		uint16_t *dst = fbp16 + (act_x1 + vinfo.xoffset) + (act_y1 + vinfo.yoffset) * (finfo.line_length / 2);
+		int32_t area_width = act_x2 - act_x1 + 1;
+		int32_t area_height = act_y2 - act_y1 + 1;
+		rotate90_rgb565(
+				(const uint16_t *)color_p, // src
+				dst, // dst
+				area_width, // src_width
+				area_height, // src_height
+				area_width * 2, // src_stride in bytes
+				finfo.line_length // dst_stride in bytes
+		);
 	}
 	/*8 bit per pixel*/
 	else if (vinfo.bits_per_pixel == 8) {
