@@ -197,15 +197,16 @@ void fbdev_flush(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_p)
 		// 	memcpy(&fbp16[location], (uint32_t *)color_p, (act_x2 - act_x1 + 1) * 2);
 		// 	color_p += w;
 		// }
-		uint16_t *dst = fbp16 + (act_x1 + vinfo.xoffset) + (act_y1 + vinfo.yoffset) * (finfo.line_length / 2);
-		int32_t area_width = act_x2 - act_x1 + 1;
-		int32_t area_height = act_y2 - act_y1 + 1;
-		rotate90_rgb565(
+		printf("%d x %d\n", act_x2 - act_x1 + 1, act_y2 - act_y1 + 1);
+		draw_rotated_region_rgb565(
 				(const uint16_t *)color_p, // src
-				dst, // dst
-				area_width, // src_width
-				area_height, // src_height
-				area_width, // src_stride in bytes
+				vinfo.yres, vinfo.xres, // width x height
+				act_x1 + vinfo.xoffset, // src x
+				act_y1 + vinfo.xoffset, // src y
+				act_x2 - act_x1 + 1, // src_width
+				act_y2 - act_y1 + 1, // src_height
+				vinfo.yres, // src_stride in bytes
+				fbp16, // dst
 				finfo.line_length // dst_stride in bytes
 		);
 	}
@@ -222,8 +223,7 @@ void fbdev_flush(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_p)
 	/*1 bit per pixel*/
 	else if (vinfo.bits_per_pixel == 1) {
 		uint8_t *fbp8 = (uint8_t *)fbp;
-		int32_t x;
-		int32_t y;
+		int32_t x, y;
 		for (y = act_y1; y <= act_y2; y++) {
 			for (x = act_x1; x <= act_x2; x++) {
 				location = (x + vinfo.xoffset) + (y + vinfo.yoffset) * vinfo.xres;
@@ -258,18 +258,20 @@ void fbdev_get_sizes(uint32_t *width, uint32_t *height) {
  *   STATIC FUNCTIONS
  **********************/
 
-static void rotate90_rgb565(const uint16_t *src, uint16_t *dst, int32_t src_width, int32_t src_height,
-		int32_t src_stride,
-		int32_t dst_stride) {
-	src_stride /= sizeof(uint16_t);
+void draw_rotated_region_rgb565(
+		const uint16_t *src, int src_W, int src_H,
+		int area_x, int area_y, int area_w, int area_h,
+		uint16_t *dst, int dst_stride) {
 	dst_stride /= sizeof(uint16_t);
-
-	for (int32_t x = 0; x < src_width; ++x) {
-		int32_t dstIndex = (src_width - x - 1);
-		int32_t srcIndex = x;
-		for (int32_t y = 0; y < src_height; ++y) {
-			dst[dstIndex * dst_stride + y] = src[srcIndex];
-			srcIndex += src_stride;
+	for (int y = 0; y < area_h; ++y) {
+		for (int x = 0; x < area_w; ++x) {
+			// Source pixel coordinates
+			int src_idx = (area_y + y) * src_W + (area_x + x);
+			// Destination coordinates after 90-degree rotation
+			int dst_x = area_h - 1 - y;
+			int dst_y = x;
+			int dst_idx = dst_x * dst_stride + dst_y;
+			dst[dst_idx] = src[src_idx];
 		}
 	}
 }
