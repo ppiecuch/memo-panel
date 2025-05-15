@@ -206,7 +206,6 @@ void fbdev_flush(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_p)
 				act_y1 + vinfo.xoffset, // src y
 				act_x2 - act_x1 + 1, // src_width
 				act_y2 - act_y1 + 1, // src_height
-				vinfo.yres, // src_stride in bytes
 				fbp16, // dst
 				finfo.line_length // dst_stride in bytes
 		);
