@@ -193,20 +193,6 @@ void fbdev_flush(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_p)
 			memcpy(&fbp16[location], (uint32_t *)color_p, (act_x2 - act_x1 + 1) * 2);
 			color_p += w;
 		}
-		// int32_t src_w = (act_x2 - act_x1 + 1);
-		// int32_t src_h = (act_y2 - act_y1 + 1);
-		// int32_t x, y;
-		// Rotate 90 degrees clockwise: dst(x, y) = src(y, src_w-1-x)
-		// for (x = 0; x < src_w; x++) {
-		// 	for (y = 0; y < src_h; y++) {
-		// 		int32_t src_idx = y * src_w + (src_w - 1 - x);
-		// 		int32_t dst_x = act_x1 + x;
-		// 		int32_t dst_y = act_y1 + y;
-		// 		int32_t dst_idx = (dst_x + vinfo.xoffset) + (dst_y + vinfo.yoffset) * (finfo.line_length / 2);
-		// 		fbp16[dst_idx] = ((uint16_t *)color_p)[src_idx];
-		// 	}
-		// }
-		// color_p += src_w * src_h;
 	}
 	/*8 bit per pixel*/
 	else if (vinfo.bits_per_pixel == 8) {
@@ -256,5 +242,21 @@ void fbdev_get_sizes(uint32_t *width, uint32_t *height) {
 /**********************
  *   STATIC FUNCTIONS
  **********************/
+
+static void rotate90_rgb565(const uint16_t *src, uint16_t *dst, int32_t src_width, int32_t src_height,
+		int32_t src_stride,
+		int32_t dst_stride) {
+	src_stride /= sizeof(uint16_t);
+	dst_stride /= sizeof(uint16_t);
+
+	for (int32_t x = 0; x < src_width; ++x) {
+		int32_t dstIndex = (src_width - x - 1);
+		int32_t srcIndex = x;
+		for (int32_t y = 0; y < src_height; ++y) {
+			dst[dstIndex * dst_stride + y] = src[srcIndex];
+			srcIndex += src_stride;
+		}
+	}
+}
 
 #endif
