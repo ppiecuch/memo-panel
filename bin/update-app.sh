@@ -21,6 +21,7 @@ if [ -f $app ]; then
     echo "=== Installing service -> /etc/systemd/system/"
     cp service/$app.service /etc/systemd/system/
   fi
+  ls -l /var/app/$app/
 else
   echo "$app not found."
 fi
