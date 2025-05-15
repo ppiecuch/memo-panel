@@ -16,13 +16,8 @@
  *====================*/
 
 /* Maximal horizontal and vertical resolution to support by the library.*/
-#ifdef __linux__
-#define LV_HOR_RES_MAX          (480)
-#define LV_VER_RES_MAX          (1280)
-#else
 #define LV_HOR_RES_MAX          (1280)
 #define LV_VER_RES_MAX          (480)
-#endif
 
 /* Color depth:
  * - 1:  1 byte per pixel
