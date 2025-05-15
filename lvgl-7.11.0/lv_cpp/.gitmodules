@@ -1,0 +1,3 @@
+[submodule "external/lvgl/lvgl"]
+	path = ext/lvgl/lvgl
+	url = https://github.com/lvgl/lvgl.git
