@@ -15,7 +15,7 @@ if [ -f $app ]; then
   echo "=== Installing app -> /var/app/$app"
   mkdir -p /var/app/$app
   rm -rf /var/app/$app/*
-  cp $app /var/app/$app/
+  cp $app ${app}.ini /var/app/$app/
   chown -R root.root /var/app/$app
   if [ -f service/$app.service ]; then
     echo "=== Installing service -> /etc/systemd/system/"
