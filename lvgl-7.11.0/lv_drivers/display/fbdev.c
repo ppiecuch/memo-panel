@@ -205,7 +205,7 @@ void fbdev_flush(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_p)
 				dst, // dst
 				area_width, // src_width
 				area_height, // src_height
-				area_width * 2, // src_stride in bytes
+				area_width, // src_stride in bytes
 				finfo.line_length // dst_stride in bytes
 		);
 	}
