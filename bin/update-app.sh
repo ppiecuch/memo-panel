@@ -12,13 +12,13 @@ fi
 app=memo-panel
 
 if [ -f $app ]; then
-  echo "=== Installing app"
+  echo "=== Installing app -> /var/app/$app"
   mkdir -p /var/app/$app
   rm -rf /var/app/$app/*
   cp $app /var/app/$app/
   chown -R root.root /var/app/$app
   if [ -f service/$app.service ]; then
-    echo "=== Installing service"
+    echo "=== Installing service -> /etc/systemd/system/"
     cp service/$app.service /etc/systemd/system/
   fi
 else
