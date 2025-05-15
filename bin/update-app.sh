@@ -13,7 +13,9 @@ app=memo-panel
 
 if [ -f $app ]; then
   echo "=== Installing app"
+  mkdir -p /var/app/$app
   rm -rf /var/app/$app/*
+  cp $app /var/app/$app/
   chown -R root.root /var/app/$app
   if [ -f service/$app.service ]; then
     echo "=== Installing service"
