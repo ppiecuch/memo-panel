@@ -425,7 +425,7 @@ static void panel_init(char *prog_name) {
 	memo_task = lv_task_create(memo_timer_cb, 15000, LV_TASK_PRIO_LOW, NULL);
 	weather_task = lv_task_create(weather_timer_cb, 10 * 60000, LV_TASK_PRIO_LOW, NULL);
 
-	lv_obj_t *checker = create_checkerboard_canvas(scr, lv_obj_get_width(scr) / 96, lv_obj_get_height(scr) / 96, 96);
+	lv_obj_t *checker = create_checkerboard_canvas(scr, lv_obj_get_width(scr) / 80, lv_obj_get_height(scr) / 80, 80);
 	lv_obj_set_pos(checker, 0, 0);
 	lv_obj_set_size(checker, lv_obj_get_width(scr), lv_obj_get_height(scr));
 }
@@ -475,7 +475,7 @@ static void hal_init() {
 	 * how much time were elapsed Create an SDL thread to do this */
 	SDL_CreateThread(tick_thread, "tick", NULL);
 
-	/*Create a display buffer*/
+	/* Create a display buffe r*/
 	lv_disp_buf_init(&disp_buf, lvbuf1, NULL, LV_BUF_SIZE);
 
 	/*Create a display*/
@@ -501,14 +501,14 @@ static void hal_init() {
 
 	keyboard_init();
 	static lv_indev_drv_t indev_drv_2;
-	lv_indev_drv_init(&indev_drv_2); /*Basic initialization*/
+	lv_indev_drv_init(&indev_drv_2); /* Basic initialization */
 	indev_drv_2.type = LV_INDEV_TYPE_KEYPAD;
 	indev_drv_2.read_cb = keyboard_read;
 	lv_indev_t *kb_indev = lv_indev_drv_register(&indev_drv_2);
 	lv_indev_set_group(kb_indev, g);
 	mousewheel_init();
 	static lv_indev_drv_t indev_drv_3;
-	lv_indev_drv_init(&indev_drv_3); /*Basic initialization*/
+	lv_indev_drv_init(&indev_drv_3); /* Basic initialization */
 	indev_drv_3.type = LV_INDEV_TYPE_ENCODER;
 	indev_drv_3.read_cb = mousewheel_read;
 
