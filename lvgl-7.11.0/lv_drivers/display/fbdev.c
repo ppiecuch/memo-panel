@@ -192,23 +192,22 @@ void fbdev_flush(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_p)
 	/*16 bit per pixel*/
 	else if (vinfo.bits_per_pixel == 16) {
 		uint16_t *fbp16 = (uint16_t *)fbp;
-		// int32_t y;
-		// for (y = act_y1; y <= act_y2; y++) {
-		// 	location = (act_x1 + vinfo.xoffset) + (y + vinfo.yoffset) * finfo.line_length / 2;
-		// 	memcpy(&fbp16[location], (uint32_t *)color_p, (act_x2 - act_x1 + 1) * 2);
-		// 	color_p += w;
-		// }
-		printf("%d x %d\n", act_x2 - act_x1 + 1, act_y2 - act_y1 + 1);
-		draw_rotated_region_rgb565(
-				(const uint16_t *)color_p, // src
-				vinfo.yres, vinfo.xres, // width x height
-				act_x1 + vinfo.xoffset, // src x
-				act_y1 + vinfo.xoffset, // src y
-				act_x2 - act_x1 + 1, // src_width
-				act_y2 - act_y1 + 1, // src_height
-				fbp16, // dst
-				finfo.line_length // dst_stride in bytes
-		);
+		int32_t y;
+		for (y = act_y1; y <= act_y2; y++) {
+			location = (act_x1 + vinfo.xoffset) + (y + vinfo.yoffset) * finfo.line_length / 2;
+			memcpy(&fbp16[location], (uint32_t *)color_p, (act_x2 - act_x1 + 1) * 2);
+			color_p += w;
+		}
+		// draw_rotated_region_rgb565(
+		// 		(const uint16_t *)color_p, // src
+		// 		vinfo.yres, vinfo.xres, // width x height
+		// 		act_x1 + vinfo.xoffset, // src x
+		// 		act_y1 + vinfo.xoffset, // src y
+		// 		act_x2 - act_x1 + 1, // src_width
+		// 		act_y2 - act_y1 + 1, // src_height
+		// 		fbp16, // dst
+		// 		finfo.line_length // dst_stride in bytes
+		// );
 	}
 	/*8 bit per pixel*/
 	else if (vinfo.bits_per_pixel == 8) {
