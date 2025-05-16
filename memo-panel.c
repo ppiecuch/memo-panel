@@ -165,6 +165,60 @@ static size_t round_up(size_t v) {
 	return ++v;
 }
 
+// Color palette
+static lv_color_t cell_colors[] = {
+	LV_COLOR_RED, LV_COLOR_BLUE, LV_COLOR_GREEN, LV_COLOR_YELLOW,
+	LV_COLOR_ORANGE, LV_COLOR_PURPLE, LV_COLOR_TEAL, LV_COLOR_MAROON
+};
+
+lv_obj_t *create_checkerboard_canvas(lv_obj_t *parent, int cols, int rows, int cell_size) {
+	int width = cols * cell_size;
+	int height = rows * cell_size;
+
+	// Create a canvas object
+	lv_color_t cbuf[LV_CANVAS_BUF_SIZE_TRUE_COLOR(cell_size * cols, cell_size * rows)];
+	lv_obj_t *canvas = lv_canvas_create(parent, NULL);
+	lv_canvas_set_buffer(canvas, cbuf, width, height, LV_IMG_CF_TRUE_COLOR);
+	lv_canvas_fill_bg(canvas, LV_COLOR_WHITE, LV_OPA_COVER);
+
+	lv_draw_label_dsc_t label_dsc;
+	lv_draw_label_dsc_init(&label_dsc);
+	label_dsc.color = LV_COLOR_WHITE;
+
+	char buf[8];
+	int cell_num = 1;
+	for (int row = 0; row < rows; ++row) {
+		for (int col = 0; col < cols; ++col) {
+			// Pick color for this cell
+			lv_color_t color = cell_colors[(row * cols + col) % (sizeof(cell_colors) / sizeof(cell_colors[0]))];
+			lv_area_t cell_area = {
+				.x1 = col * cell_size,
+				.y1 = row * cell_size,
+				.x2 = (col + 1) * cell_size - 1,
+				.y2 = (row + 1) * cell_size - 1
+			};
+			lv_canvas_draw_rect(canvas, cell_area.x1, cell_area.y1, cell_size, cell_size,
+					&(lv_draw_rect_dsc_t){
+							.bg_color = color,
+							.bg_opa = LV_OPA_COVER,
+							.border_color = LV_COLOR_BLACK,
+							.border_width = 1 });
+
+			// Draw cell number in the center
+			snprintf(buf, sizeof(buf), "%d", cell_num++);
+			lv_point_t txt_size;
+			_lv_txt_get_size(&txt_size, buf, label_dsc.font, 0, 0, LV_COORD_MAX, LV_TXT_FLAG_NONE);
+			int txt_x = cell_area.x1 + (cell_size - txt_size.x) / 2;
+			int txt_y = cell_area.y1 + (cell_size - txt_size.y) / 2;
+			lv_canvas_draw_text(canvas, txt_x, txt_y, cell_size,
+					&label_dsc,
+					buf, LV_LABEL_ALIGN_LEFT);
+		}
+	}
+
+	return canvas;
+}
+
 struct _mem_chunk {
 	char *buf;
 	size_t size;
@@ -370,6 +424,10 @@ static void panel_init(char *prog_name) {
 	net_task = lv_task_create(net_timer_cb, 3000, LV_TASK_PRIO_LOW, NULL);
 	memo_task = lv_task_create(memo_timer_cb, 15000, LV_TASK_PRIO_LOW, NULL);
 	weather_task = lv_task_create(weather_timer_cb, 10 * 60000, LV_TASK_PRIO_LOW, NULL);
+
+	lv_obj_t *checker = create_checkerboard_canvas(scr, lv_obj_get_width(scr) / 96, lv_obj_get_height(scr) / 96, 96);
+	lv_obj_set_pos(checker, 0, 0);
+	lv_obj_set_size(checker, lv_obj_get_width(scr), lv_obj_get_height(scr));
 }
 
 #ifdef __linux__
