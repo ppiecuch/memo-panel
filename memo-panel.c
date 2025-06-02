@@ -325,7 +325,7 @@ static void weather_timer_cb(lv_task_t *timer) {
 
 //  Main entry
 
-static void panel_init(char *prog_name) {
+static void panel_init(char *prog_name, lv_obj_t *root) {
 	font_large = &lv_font_montserrat_24;
 	font_normal = &lv_font_montserrat_16;
 
@@ -341,7 +341,8 @@ static void panel_init(char *prog_name) {
 	lv_style_init(&style_clock);
 	lv_style_set_text_font(&style_clock, LV_STATE_DEFAULT, &digital_clock);
 
-	lv_obj_t *scr = lv_scr_act();
+	if (!root)
+		root = lv_scr_act();
 
 	// Open configuration file
 
@@ -360,9 +361,9 @@ static void panel_init(char *prog_name) {
 
 	// Memo panel
 
-	memo_panel = lv_cont_create(scr, NULL);
+	memo_panel = lv_cont_create(root, NULL);
 	lv_obj_set_pos(memo_panel, 0, 0);
-	lv_obj_set_size(memo_panel, lv_obj_get_width(scr), lv_obj_get_height(scr) - 150);
+	lv_obj_set_size(memo_panel, lv_obj_get_width(root), lv_obj_get_height(root) - 150);
 	lv_obj_set_auto_realign(memo_panel, true); /*Auto realign when the size changes*/
 	lv_cont_set_layout(memo_panel, LV_LAYOUT_ROW_TOP);
 
@@ -385,12 +386,12 @@ static void panel_init(char *prog_name) {
 
 	// Time/date controls
 
-	controls_panel = lv_cont_create(scr, NULL);
+	controls_panel = lv_cont_create(root, NULL);
 	lv_obj_set_pos(controls_panel, 0, lv_obj_get_height(memo_panel));
-	lv_obj_set_size(controls_panel, lv_obj_get_width(scr), 150);
+	lv_obj_set_size(controls_panel, lv_obj_get_width(root), 150);
 
 	const int gl_h = 118, gl_w = 71;
-	int x_off = (lv_obj_get_width(scr) - 8 * gl_w) / 2;
+	int x_off = (lv_obj_get_width(root) - 8 * gl_w) / 2;
 	for (int c = 0; c < 8; c++, x_off += gl_w) {
 		clock_label[c] = lv_label_create(controls_panel, NULL);
 		lv_obj_set_pos(clock_label[c], x_off, 3);
@@ -425,9 +426,9 @@ static void panel_init(char *prog_name) {
 	memo_task = lv_task_create(memo_timer_cb, 15000, LV_TASK_PRIO_LOW, NULL);
 	weather_task = lv_task_create(weather_timer_cb, 10 * 60000, LV_TASK_PRIO_LOW, NULL);
 
-	lv_obj_t *checker = create_checkerboard_canvas(scr, lv_obj_get_width(scr) / 80, lv_obj_get_height(scr) / 80, 80);
+	lv_obj_t *checker = create_checkerboard_canvas(root, lv_obj_get_width(root) / 80, lv_obj_get_height(root) / 80, 80);
 	lv_obj_set_pos(checker, 0, 0);
-	lv_obj_set_size(checker, lv_obj_get_width(scr), lv_obj_get_height(scr));
+	lv_obj_set_size(checker, lv_obj_get_width(root), lv_obj_get_height(root));
 }
 
 #ifdef __linux__
@@ -524,7 +525,7 @@ int main(int argc, char *argv[]) {
 	hal_init();
 
 	// Panel initialization
-	panel_init(argv[0]);
+	panel_init(argv[0], NULL);
 
 	// Handle LVGL tasks (tickless mode)
 	while (1) {

@@ -192,11 +192,15 @@ void fbdev_flush(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_p)
 	/*16 bit per pixel*/
 	else if (vinfo.bits_per_pixel == 16) {
 		uint16_t *fbp16 = (uint16_t *)fbp;
-		int32_t y;
-		for (y = act_y1; y <= act_y2; y++) {
-			location = (act_x1 + vinfo.xoffset) + (y + vinfo.yoffset) * finfo.line_length / 2;
-			memcpy(&fbp16[location], (uint32_t *)color_p, (act_x2 - act_x1 + 1) * 2);
-			color_p += w;
+		if (1) {
+			rotate_area_cw(color_p, fbp, vinfo.xres, act_x1, act_y1, act_x2, act_y2);
+		} else {
+			int32_t y;
+			for (y = act_y1; y <= act_y2; y++) {
+				location = (act_x1 + vinfo.xoffset) + (y + vinfo.yoffset) * finfo.line_length / 2;
+				memcpy(&fbp16[location], (uint32_t *)color_p, (act_x2 - act_x1 + 1) * 2);
+				color_p += w;
+			}
 		}
 	}
 	/*8 bit per pixel*/
@@ -247,20 +251,12 @@ void fbdev_get_sizes(uint32_t *width, uint32_t *height) {
  *   STATIC FUNCTIONS
  **********************/
 
-void draw_rotated_region_rgb565(
-		const uint16_t *src, int src_W, int src_H,
-		int area_x, int area_y, int area_w, int area_h,
-		uint16_t *dst, int dst_stride) {
-	dst_stride /= sizeof(uint16_t);
-	for (int y = 0; y < area_h; ++y) {
-		for (int x = 0; x < area_w; ++x) {
-			// Source pixel coordinates
-			int src_idx = (area_y + y) * src_W + (area_x + x);
-			// Destination coordinates after 90-degree rotation
-			int dst_x = area_h - 1 - y;
-			int dst_y = x;
-			int dst_idx = dst_x * dst_stride + dst_y;
-			dst[dst_idx] = src[src_idx];
+static inline void rotate_area_cw(const int16_t *in, int16_t *out, int32_t dim, int32_t area_x1, int32_t area_y1, int32_t area_x2, int32_t area_y2) {
+	int i, j;
+
+	for (i = area_y1; i < area_y1; i++) {
+		for (j = area_x1; j < area_x2; j++) {
+            out[i,j] = in[j,dim-i]
 		}
 	}
 }
