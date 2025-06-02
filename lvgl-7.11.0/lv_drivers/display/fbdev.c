@@ -58,8 +58,6 @@ struct bsd_fb_fix_info {
  *  STATIC PROTOTYPES
  **********************/
 
-static inline void rotate_area_cw(const uint16_t *in, uint16_t *out, int32_t in_height, int32_t in_line_length, int32_t out_line_length, int32_t area_x1, int32_t area_y1, int32_t area_x2, int32_t area_y2);
-
 /**********************
  *  STATIC VARIABLES
  **********************/
@@ -190,7 +188,12 @@ void fbdev_flush(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_p)
 	else if (vinfo.bits_per_pixel == 16) {
 		uint16_t *fbp16 = (uint16_t *)fbp;
 		if (1) {
-			rotate_area_cw((const uint16_t*)color_p, fbp16, vinfo.xres, vinfo.yres * vinfo.bits_per_pixel, finfo.line_length, act_x1, act_y1, act_x2, act_y2);
+			int i, j;
+
+			for (i = act_y1; i < act_y1; i++) {
+				for (j = act_x1; j < act_x2; j++) {
+					fbp16[i+j*finfo.line_length] = color_p[j];
+				color_p += w;
 		} else {
 			int32_t y;
 			for (y = act_y1; y <= act_y2; y++) {
@@ -247,15 +250,5 @@ void fbdev_get_sizes(uint32_t *width, uint32_t *height) {
 /**********************
  *   STATIC FUNCTIONS
  **********************/
-
-static inline void rotate_area_cw(const uint16_t *in, uint16_t *out, int32_t in_height, int32_t in_line_length, int32_t out_line_length, int32_t area_x1, int32_t area_y1, int32_t area_x2, int32_t area_y2) {
-	int i, j;
-
-	for (i = area_y1; i < area_y1; i++) {
-		for (j = area_x1; j < area_x2; j++) {
-            out[i+j*out_line_length] = in[j+(in_height-i)*in_line_length];
-		}
-	}
-}
 
 #endif
