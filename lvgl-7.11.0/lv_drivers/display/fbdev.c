@@ -190,7 +190,7 @@ void fbdev_flush(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_p)
 		if (1) {
 			int i, j;
 
-			for (i = act_y1; i < act_y1; i++) {
+			for (i = act_y1; i < act_y2; i++) {
 				for (j = act_x1; j < act_x2; j++) {
 					fbp16[i+j*finfo.line_length] = ((uint16_t *)color_p)[j-act_x1];
 					color_p += w;
