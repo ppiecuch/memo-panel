@@ -253,7 +253,7 @@ static inline void rotate_area_cw(const int16_t *in, int16_t *out, int32_t dim, 
 
 	for (i = area_y1; i < area_y1; i++) {
 		for (j = area_x1; j < area_x2; j++) {
-            out[i,j] = in[j,dim-i]
+            out[i,j] = in[j,dim-i];
 		}
 	}
 }
