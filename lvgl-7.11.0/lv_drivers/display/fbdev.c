@@ -58,7 +58,7 @@ struct bsd_fb_fix_info {
  *  STATIC PROTOTYPES
  **********************/
 
-static inline void rotate_area_cw(const int16_t *in, int16_t *out, int32_t out_height, int32_t line_length, int32_t area_x1, int32_t area_y1, int32_t area_x2, int32_t area_y2);
+static inline void rotate_area_cw(const uint16_t *in, uint16_t *out, int32_t out_height, int32_t line_length, int32_t area_x1, int32_t area_y1, int32_t area_x2, int32_t area_y2);
 
 /**********************
  *  STATIC VARIABLES
