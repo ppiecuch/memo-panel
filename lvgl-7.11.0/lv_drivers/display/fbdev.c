@@ -190,7 +190,7 @@ void fbdev_flush(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_p)
 	else if (vinfo.bits_per_pixel == 16) {
 		uint16_t *fbp16 = (uint16_t *)fbp;
 		if (1) {
-			rotate_area_cw(color_p, fbp, vinfo.xres, act_x1, act_y1, act_x2, act_y2);
+			rotate_area_cw((uint16_t *)color_p, fbp, vinfo.xres, act_x1, act_y1, act_x2, act_y2);
 		} else {
 			int32_t y;
 			for (y = act_y1; y <= act_y2; y++) {
