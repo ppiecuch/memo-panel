@@ -58,7 +58,7 @@ static lv_disp_buf_t disp_buf;
 
 // Static buffer(s). The second buffer is optional
 static lv_color_t lvbuf1[LV_BUF_SIZE];
-// static lv_color_t lvbuf2[LV_BUF_SIZE];
+static lv_color_t lvbuf2[LV_BUF_SIZE];
 
 // Display info and controls
 static const char *DAY[] = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
@@ -437,7 +437,7 @@ static void hal_init() {
 	evdev_init(); // Touch pointer device init
 
 	// Initialize `disp_buf` with the display buffer(s)
-	lv_disp_buf_init(&disp_buf, lvbuf1, NULL, LV_BUF_SIZE);
+	lv_disp_buf_init(&disp_buf, lvbuf1, lvbuf2, LV_BUF_SIZE);
 
 	// Initialize and register a display driver
 	lv_disp_drv_t disp_drv;
@@ -454,6 +454,11 @@ static void hal_init() {
 	indev_drv.type = LV_INDEV_TYPE_POINTER;
 	indev_drv.read_cb = evdev_read; // defined in lv_drivers/indev/evdev.h
 	lv_indev_drv_register(&indev_drv);
+}
+
+static void hal_exit() {
+	evdev_exit();
+	fbdev_exit();
 }
 
 #else /* __linux__ */
@@ -477,7 +482,7 @@ static void hal_init() {
 	SDL_CreateThread(tick_thread, "tick", NULL);
 
 	/* Create a display buffe r*/
-	lv_disp_buf_init(&disp_buf, lvbuf1, NULL, LV_BUF_SIZE);
+	lv_disp_buf_init(&disp_buf, lvbuf1, lvbuf2, LV_BUF_SIZE);
 
 	/*Create a display*/
 	lv_disp_drv_t disp_drv;
@@ -516,6 +521,10 @@ static void hal_init() {
 	lv_indev_t *enc_indev = lv_indev_drv_register(&indev_drv_3);
 	lv_indev_set_group(enc_indev, g);
 }
+
+static void hal_exit() {
+}
+
 #endif /* __linux__ */
 
 int main(int argc, char *argv[]) {
@@ -533,5 +542,7 @@ int main(int argc, char *argv[]) {
 		lv_task_handler();
 		usleep(5000);
 	}
+
+	hal_exit();
 	return 0;
 }
