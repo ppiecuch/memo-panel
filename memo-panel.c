@@ -457,7 +457,6 @@ static void hal_init() {
 }
 
 static void hal_exit() {
-	evdev_exit();
 	fbdev_exit();
 }
 
