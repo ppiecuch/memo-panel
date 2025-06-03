@@ -127,7 +127,7 @@ void fbdev_init(void) {
 	}
 #endif /* USE_BSD_FBDEV */
 
-	printf("%dx%d, line_length:%d, %dbpp, rotate:%d, DevTerm:%d\n", vinfo.xres, vinfo.yres, finfo.line_length, vinfo.bits_per_pixel, vinfo.rotate,
+	printf("%dx%d, line_length:%d, %dbpp, rotate:%d, DevTerm:%s\n", vinfo.xres, vinfo.yres, finfo.line_length, vinfo.bits_per_pixel, vinfo.rotate,
 #ifdef CLOCKWORK_DEVTERM
 		   "yes"
 #else

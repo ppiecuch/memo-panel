@@ -425,9 +425,9 @@ static void panel_init(char *prog_name, lv_obj_t *root) {
 	memo_task = lv_task_create(memo_timer_cb, 15000, LV_TASK_PRIO_LOW, NULL);
 	weather_task = lv_task_create(weather_timer_cb, 10 * 60000, LV_TASK_PRIO_LOW, NULL);
 
-	lv_obj_t *checker = create_checkerboard_canvas(root, lv_obj_get_width(root) / 80, lv_obj_get_height(root) / 80, 80);
-	lv_obj_set_pos(checker, 0, 0);
-	lv_obj_set_size(checker, lv_obj_get_width(root), lv_obj_get_height(root));
+	// lv_obj_t *checker = create_checkerboard_canvas(root, lv_obj_get_width(root) / 80, lv_obj_get_height(root) / 80, 80);
+	// lv_obj_set_pos(checker, 0, 0);
+	// lv_obj_set_size(checker, lv_obj_get_width(root), lv_obj_get_height(root));
 }
 
 #ifdef __linux__
