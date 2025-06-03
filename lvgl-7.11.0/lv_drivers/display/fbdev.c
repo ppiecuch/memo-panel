@@ -127,7 +127,7 @@ void fbdev_init(void) {
 	}
 #endif /* USE_BSD_FBDEV */
 
-	printf("%dx%d, line length:%d, %dbpp, rotate:%d\n", vinfo.xres, vinfo.yres, finfo.line_length, vinfo.bits_per_pixel, vinfo.rotate);
+	printf("%dx%d, line_length:%d, %dbpp, rotate:%d, DevTerm:%d\n", vinfo.xres, vinfo.yres, finfo.line_length, vinfo.bits_per_pixel, vinfo.rotate, CLOCKWORK_DEVTERM);
 
 	// Figure out the size of the screen in bytes
 	screensize = finfo.smem_len; //finfo.line_length * vinfo.yres;
