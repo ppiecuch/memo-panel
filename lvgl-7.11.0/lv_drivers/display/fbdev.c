@@ -187,7 +187,7 @@ void fbdev_flush(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_p)
 	/*16 bit per pixel*/
 	else if (vinfo.bits_per_pixel == 16) {
 		uint16_t *fbp16 = (uint16_t *)fbp;
-		if (1) {
+		if (0) {
 			int i, j;
 			uint16_t *color_p16 = (uint16_t *)color_p;
 
