@@ -56,9 +56,8 @@ static double openweather_coord[2] = { 0, 0 };
 // A static variable to store the display buffers
 static lv_disp_buf_t disp_buf;
 
-// Static buffer(s). The second buffer is optional
+// Static buffer(s).
 static lv_color_t lvbuf1[LV_BUF_SIZE];
-static lv_color_t lvbuf2[LV_BUF_SIZE];
 
 // Display info and controls
 static const char *DAY[] = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
@@ -190,7 +189,7 @@ lv_obj_t *create_checkerboard_canvas(lv_obj_t *parent, int cols, int rows, int c
 	for (int row = 0; row < rows; ++row) {
 		for (int col = 0; col < cols; ++col) {
 			// Pick color for this cell
-			lv_color_t color = cell_colors[(row * cols + col) % (sizeof(cell_colors) / sizeof(cell_colors[0]))];
+			lv_color_t color = cell_colors[rand() % (sizeof(cell_colors) / sizeof(cell_colors[0]))];
 			lv_area_t cell_area = {
 				.x1 = col * cell_size,
 				.y1 = row * cell_size,
@@ -437,7 +436,7 @@ static void hal_init() {
 	evdev_init(); // Touch pointer device init
 
 	// Initialize `disp_buf` with the display buffer(s)
-	lv_disp_buf_init(&disp_buf, lvbuf1, lvbuf2, LV_BUF_SIZE);
+	lv_disp_buf_init(&disp_buf, lvbuf1, NULL, LV_BUF_SIZE);
 
 	// Initialize and register a display driver
 	lv_disp_drv_t disp_drv;
@@ -481,7 +480,7 @@ static void hal_init() {
 	SDL_CreateThread(tick_thread, "tick", NULL);
 
 	/* Create a display buffe r*/
-	lv_disp_buf_init(&disp_buf, lvbuf1, lvbuf2, LV_BUF_SIZE);
+	lv_disp_buf_init(&disp_buf, lvbuf1, NULL, LV_BUF_SIZE);
 
 	/*Create a display*/
 	lv_disp_drv_t disp_drv;
@@ -527,6 +526,8 @@ static void hal_exit() {
 #endif /* __linux__ */
 
 int main(int argc, char *argv[]) {
+	srand(time(NULL));
+
 	lv_init(); // LVGL init
 	lv_png_init(); // png file support
 

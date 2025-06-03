@@ -154,11 +154,17 @@ void fbdev_exit(void) {
  * @param color_p an array of pixel to copy to the `area` part of the screen
  */
 void fbdev_flush(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_p) {
+#ifdef CLOCKWORK_DEVTERM
+	int32_t xres = vinfo.yres, yres = vinfo.xres;
+#else
+	int32_t xres = vinfo.xres, yres = vinfo.yres;
+#endif
+
 	if (fbp == NULL ||
 			area->x2 < 0 ||
 			area->y2 < 0 ||
-			area->x1 > (int32_t)vinfo.xres - 1 ||
-			area->y1 > (int32_t)vinfo.yres - 1) {
+			area->x1 > xres - 1 ||
+			area->y1 > yres - 1) {
 		lv_disp_flush_ready(drv);
 		return;
 	}
@@ -166,8 +172,8 @@ void fbdev_flush(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_p)
 	/*Truncate the area to the screen*/
 	int32_t act_x1 = area->x1 < 0 ? 0 : area->x1;
 	int32_t act_y1 = area->y1 < 0 ? 0 : area->y1;
-	int32_t act_x2 = area->x2 > (int32_t)vinfo.xres - 1 ? (int32_t)vinfo.xres - 1 : area->x2;
-	int32_t act_y2 = area->y2 > (int32_t)vinfo.yres - 1 ? (int32_t)vinfo.yres - 1 : area->y2;
+	int32_t act_x2 = area->x2 > xres - 1 ? xres - 1 : area->x2;
+	int32_t act_y2 = area->y2 > yres - 1 ? yres - 1 : area->y2;
 
 	lv_coord_t w = (act_x2 - act_x1 + 1);
 	long int location = 0;
@@ -187,24 +193,24 @@ void fbdev_flush(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_p)
 	/*16 bit per pixel*/
 	else if (vinfo.bits_per_pixel == 16) {
 		uint16_t *fbp16 = (uint16_t *)fbp;
-		if (0) {
-			int i, j;
-			uint16_t *color_p16 = (uint16_t *)color_p;
+#ifdef CLOCKWORK_DEVTERM
+		int i, j, line_length = finfo.line_length/2;
+		uint16_t *color_p16 = (uint16_t *)color_p;
 
-			for (i = act_y1; i <= act_y2; i++) {
-				for (j = act_x1; j <= act_x2; j++) {
-					fbp16[i+j*finfo.line_length/2] = color_p16[j-act_x1];
-				}
-				color_p16 += w;
+		for (i = act_y1; i <= act_y2; i++) {
+			for (j = act_x1; j <= act_x2; j++) {
+				fbp16[(vinfo.xres-i)+j*line_length] = color_p16[j-act_x1];
 			}
-		} else {
-			int32_t y;
-			for (y = act_y1; y <= act_y2; y++) {
-				location = (act_x1 + vinfo.xoffset) + (y + vinfo.yoffset) * finfo.line_length / 2;
-				memcpy(&fbp16[location], (uint32_t *)color_p, (act_x2 - act_x1 + 1) * 2);
-				color_p += w;
-			}
+			color_p16 += w;
 		}
+#endif // CLOCKWORK_DEVTERM
+		int32_t y;
+		for (y = act_y1; y <= act_y2; y++) {
+			location = (act_x1 + vinfo.xoffset) + (y + vinfo.yoffset) * finfo.line_length / 2;
+			memcpy(&fbp16[location], (uint32_t *)color_p, (act_x2 - act_x1 + 1) * 2);
+			color_p += w;
+		}
+#endif
 	}
 	/*8 bit per pixel*/
 	else if (vinfo.bits_per_pixel == 8) {

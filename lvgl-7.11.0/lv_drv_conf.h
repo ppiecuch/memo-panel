@@ -422,6 +422,8 @@
 /*No settings*/
 #endif
 
+#define CLOCKWORK_DEVTERM
+
 #endif  /*LV_DRV_CONF_H*/
 
 #endif /*End of "Content enable"*/
