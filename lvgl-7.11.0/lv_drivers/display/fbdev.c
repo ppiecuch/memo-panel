@@ -203,7 +203,7 @@ void fbdev_flush(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_p)
 			}
 			color_p16 += w;
 		}
-#endif // CLOCKWORK_DEVTERM
+#else // CLOCKWORK_DEVTERM
 		int32_t y;
 		for (y = act_y1; y <= act_y2; y++) {
 			location = (act_x1 + vinfo.xoffset) + (y + vinfo.yoffset) * finfo.line_length / 2;
