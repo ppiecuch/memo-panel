@@ -108,6 +108,8 @@ static void time_timer_cb(lv_task_t *timer) {
 	lv_obj_set_width(weather_label, lv_obj_get_width(controls_panel) - lv_obj_get_width(date_label));
 	lv_label_set_text(weather_label, weatherString);
 
+	refresh_memo_panel();
+
 	lv_label_set_text(memo1_label, get_memo_line1());
 	lv_label_set_text(memo2_label, get_memo_line2());
 }
