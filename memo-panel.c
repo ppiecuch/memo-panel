@@ -28,6 +28,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "memo-panel-sup.h"
+
 #define NORMAL_COLOR "\x1B[0m"
 #define GREEN "\x1B[32m"
 #define BLUE "\x1B[34m"
@@ -63,12 +65,12 @@ static lv_color_t lvbuf1[LV_BUF_SIZE];
 static const char *DAY[] = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
 static const char *MONTH[] = { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" };
 
-static lv_style_t style_large, style_clock, style_memo;
+static lv_style_t style_extra1, style_extra2, style_large, style_clock, style_memo;
 static const lv_task_t *time_task, *net_task, *memo_task, *weather_task;
-static const lv_font_t *font_large, *font_normal;
+static const lv_font_t *font_extra1 = &lv_font_montserrat_48, *font_extra2 = &lv_font_montserrat_36, *font_large = &lv_font_montserrat_24, *font_normal = &lv_font_montserrat_16;
 
 static lv_obj_t *clock_label[8];
-static lv_obj_t *date_label, *weather_label;
+static lv_obj_t *date_label, *weather_label, *memo1_label, *memo2_label;
 
 static lv_obj_t *led1;
 static lv_obj_t *controls_panel, *memo_panel;
@@ -324,18 +326,20 @@ static void weather_timer_cb(lv_task_t *timer) {
 
 //  Main entry
 
-static void panel_init(char *prog_name, lv_obj_t *root) {
-	font_large = &lv_font_montserrat_24;
-	font_normal = &lv_font_montserrat_16;
+#define INIT_STYLE(S)          \
+	lv_style_init(&style_##S); \
+	lv_style_set_text_font(&style_##S, LV_STATE_DEFAULT, font_##S)
 
+static void panel_init(char *prog_name, lv_obj_t *root) {
 #if LV_USE_THEME_MATERIAL
 	LV_THEME_DEFAULT_INIT(lv_theme_get_color_primary(), lv_theme_get_color_primary(),
 			LV_THEME_DEFAULT_FLAG,
 			lv_theme_get_font_small(), lv_theme_get_font_normal(), lv_theme_get_font_subtitle(), lv_theme_get_font_title());
 #endif
 
-	lv_style_init(&style_large);
-	lv_style_set_text_font(&style_large, LV_STATE_DEFAULT, font_large);
+	INIT_STYLE(extra1);
+	INIT_STYLE(extra2);
+	INIT_STYLE(large);
 
 	lv_style_init(&style_clock);
 	lv_style_set_text_font(&style_clock, LV_STATE_DEFAULT, &digital_clock);
@@ -364,7 +368,7 @@ static void panel_init(char *prog_name, lv_obj_t *root) {
 	lv_obj_set_pos(memo_panel, 0, 0);
 	lv_obj_set_size(memo_panel, lv_obj_get_width(root), lv_obj_get_height(root) - 150);
 	lv_obj_set_auto_realign(memo_panel, true); /*Auto realign when the size changes*/
-	lv_cont_set_layout(memo_panel, LV_LAYOUT_ROW_TOP);
+	lv_cont_set_layout(memo_panel, LV_LAYOUT_COLUMN_LEFT);
 
 	lv_style_init(&style_memo);
 
@@ -382,6 +386,18 @@ static void panel_init(char *prog_name, lv_obj_t *root) {
 			lv_obj_get_width(memo_panel), lv_obj_get_height(memo_panel));
 
 	weather_timer_cb(NULL);
+
+	// Memo controls
+
+	memo1_label = lv_label_create(memo_panel, NULL);
+	lv_label_set_text(memo1_label, "...");
+	lv_obj_add_style(memo1_label, LV_LABEL_PART_MAIN, &style_extra1);
+	lv_label_set_long_mode(memo1_label, LV_LABEL_LONG_SROLL);
+
+	memo2_label = lv_label_create(memo_panel, NULL);
+	lv_label_set_text(memo2_label, "...");
+	lv_obj_add_style(memo2_label, LV_LABEL_PART_MAIN, &style_extra2);
+	lv_label_set_long_mode(memo2_label, LV_LABEL_LONG_SROLL);
 
 	// Time/date controls
 
@@ -527,6 +543,7 @@ static void hal_exit() {
 
 int main(int argc, char *argv[]) {
 	srand(time(NULL));
+	set_argv0(argv[0]);
 
 	lv_init(); // LVGL init
 	lv_png_init(); // png file support

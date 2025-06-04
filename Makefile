@@ -50,10 +50,11 @@ CFLAGS += -DLVGL=$(LVGL)
 OBJDIR = ./obj
 
 CSRCS += $(wildcard *.c) $(wildcard assets/*.c) $(wildcard deps/*.c)
+CXXSRCS += $(wildcard *.cpp) $(wildcard deps/*.cpp)
 
-COBJS = $(patsubst %.c,$(OBJDIR)/%.o,$(CSRCS))
+COBJS = $(patsubst %.c,$(OBJDIR)/%.o,$(CSRCS)) $(patsubst %.cpp,$(OBJDIR)/%.o,$(CXXSRCS))
 
-SRCS = $(CSRCS)
+SRCS = $(CSRCS) $(CXXSRCS)
 OBJS = $(COBJS)
 
 #.PHONY: clean
@@ -64,6 +65,11 @@ $(OBJDIR)/%.o: %.c
 	@mkdir -p $(dir $@)
 	@echo "CC $< -> $@"
 	@$(CC)  $(CFLAGS) -c $< -o $@
+
+$(OBJDIR)/%.o: %.cpp
+	@mkdir -p $(dir $@)
+	@echo "CXX $< -> $@"
+	@$(CXX) -std=c++14 $(CFLAGS) -c $< -o $@
 
 default: $(OBJS)
 	$(CC) -o $(BIN) $(OBJS) $(LDFLAGS) $(LIBS)
