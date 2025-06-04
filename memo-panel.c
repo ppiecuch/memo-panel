@@ -414,7 +414,7 @@ static void panel_init(char *prog_name, lv_obj_t *root) {
 	lv_label_set_long_mode(weather_label, LV_LABEL_LONG_SROLL);
 
 	led1 = lv_led_create(controls_panel, NULL);
-	lv_obj_set_pos(led1, 785, 1);
+	lv_obj_set_pos(led1, LV_HOR_RES_MAX - 15, 1);
 	lv_obj_set_size(led1, 14, 14);
 	lv_led_off(led1);
 
