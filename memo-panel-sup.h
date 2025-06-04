@@ -16,6 +16,8 @@ bool is_background_running();
 void set_background_running(bool state);
 void set_argv0(const char *argv0);
 const char *get_stats();
+const char *get_memo_line1();
+const char *get_memo_line2();
 
 #define WORDSURL "https://raw.githubusercontent.com/ppiecuch/shared-assets/master/words.txt"
 #define LOCALCACHE "/tmp/words-memo.txt"

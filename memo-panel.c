@@ -107,6 +107,9 @@ static void time_timer_cb(lv_task_t *timer) {
 	lv_obj_set_x(weather_label, lv_obj_get_width(date_label));
 	lv_obj_set_width(weather_label, lv_obj_get_width(controls_panel) - lv_obj_get_width(date_label));
 	lv_label_set_text(weather_label, weatherString);
+
+	lv_label_set_text(memo1_label, get_memo_line1());
+	lv_label_set_text(memo2_label, get_memo_line2());
 }
 
 static int get_current_network_speed_cb() {
@@ -393,11 +396,13 @@ static void panel_init(char *prog_name, lv_obj_t *root) {
 	lv_label_set_text(memo1_label, "...");
 	lv_obj_add_style(memo1_label, LV_LABEL_PART_MAIN, &style_extra1);
 	lv_label_set_long_mode(memo1_label, LV_LABEL_LONG_SROLL);
+	lv_obj_set_width(memo1_label, lv_obj_get_width(memo_panel));
 
 	memo2_label = lv_label_create(memo_panel, NULL);
 	lv_label_set_text(memo2_label, "...");
 	lv_obj_add_style(memo2_label, LV_LABEL_PART_MAIN, &style_extra2);
 	lv_label_set_long_mode(memo2_label, LV_LABEL_LONG_SROLL);
+	lv_obj_set_width(memo2_label, lv_obj_get_width(memo_panel));
 
 	// Time/date controls
 

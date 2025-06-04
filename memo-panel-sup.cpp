@@ -28,8 +28,6 @@
 
 #include "memo-panel-sup.h"
 
-char *argv0 = NULL;
-
 /// file resources management
 
 struct FILEW {
@@ -490,6 +488,8 @@ struct memo_t {
 bool is_background_running() { return memo_state.running; }
 void set_argv0(const char *argv0) { memo_state.argv0 = argv0; }
 const char *get_stats() { return memo_state.stats.c_str(); }
+const char *get_memo_line1() { return memo_state.line1.c_str(); }
+const char *get_memo_line2() { return memo_state.line2.c_str(); }
 
 typedef struct {
 	const char *image;
@@ -566,7 +566,7 @@ void init_memo_panel() {
 		if (par_easycurl_to_file(WORDSURL, LOCALCACHE)) {
 			SI_Error rc = memo_state.ini.LoadFile(LOCALCACHE);
 			if (rc < 0) {
-				ERROR("%s: unable to load words data (error 0x%X)\n", argv0, rc);
+				ERROR("%s: unable to load words data (error 0x%X)\n", memo_state.argv0, rc);
 				return;
 			};
 		} else {
@@ -648,6 +648,13 @@ void refresh_memo_panel() {
 				std::string delimiter = "::";
 				memo_state.line1 = trim(s.substr(0, s.find(delimiter)));
 				memo_state.line2 = trim(s.substr(s.find(delimiter) + 2));
+				std::wstring res;
+				if (ConvertUTF8toWide(memo_state.line1.c_str(), res)) {
+					memo_state.line1 = trunc_wstring(simplifieDiacritics(res));
+				}
+				if (ConvertUTF8toWide(memo_state.line2.c_str(), res)) {
+					memo_state.line2 = trunc_wstring(simplifieDiacritics(res));
+				}
 			} else {
 				key += "!";
 			}
@@ -658,10 +665,6 @@ void refresh_memo_panel() {
 	}
 	gettimeofday(&memo_state.t2, NULL);
 	memo_state.elapsedTime = memo_state.t2.tv_sec - memo_state.t1.tv_sec;
-
-	if (!memo_state.line1.empty() && !memo_state.line2.empty()) {
-		//
-	}
 
 	char file_ctime[128] = { 0 };
 	if (file_exists(LOCALCACHE)) {
