@@ -99,9 +99,9 @@ static void time_timer_cb(lv_task_t *timer) {
 	}
 
 	if (strlen(weatherString) > 0)
-		snprintf(dateString, 128, "%s | %s %02d %04d | ", DAY[local->tm_wday], MONTH[local->tm_mon], local->tm_mday, local->tm_year + 1900);
+		snprintf(dateString, 128, "%s, %s %02d %04d | %s | ", DAY[local->tm_wday], MONTH[local->tm_mon], local->tm_mday, local->tm_year + 1900, get_stats());
 	else
-		snprintf(dateString, 128, "%s | %s %02d %04d", DAY[local->tm_wday], MONTH[local->tm_mon], local->tm_mday, local->tm_year + 1900);
+		snprintf(dateString, 128, "%s, %s %02d %04d | %s", DAY[local->tm_wday], MONTH[local->tm_mon], local->tm_mday, local->tm_year + 1900, get_stats());
 	lv_label_set_text(date_label, dateString);
 
 	lv_obj_set_x(weather_label, lv_obj_get_width(date_label));
@@ -549,6 +549,8 @@ int main(int argc, char *argv[]) {
 	lv_png_init(); // png file support
 
 	hal_init();
+
+	init_memo_panel();
 
 	// Panel initialization
 	panel_init(argv[0], NULL);

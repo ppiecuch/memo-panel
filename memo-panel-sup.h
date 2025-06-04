@@ -8,12 +8,14 @@ extern "C" {
 #endif
 
 void init_memo_panel();
+void refresh_memo_panel();
 void dump_memo_panel();
 void print_memo_panel();
 
 bool is_background_running();
 void set_background_running(bool state);
 void set_argv0(const char *argv0);
+const char *get_stats();
 
 #define WORDSURL "https://raw.githubusercontent.com/ppiecuch/shared-assets/master/words.txt"
 #define LOCALCACHE "/tmp/words-memo.txt"

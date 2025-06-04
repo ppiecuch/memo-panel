@@ -489,6 +489,7 @@ struct memo_t {
 
 bool is_background_running() { return memo_state.running; }
 void set_argv0(const char *argv0) { memo_state.argv0 = argv0; }
+const char *get_stats() { return memo_state.stats.c_str(); }
 
 typedef struct {
 	const char *image;
@@ -560,9 +561,7 @@ static void print_memo(const std::string &line1, const std::string &line2, int d
 void init_memo_panel() {
 	gettimeofday(&memo_state.t1, NULL);
 	memo_state.ini.SetUnicode();
-}
 
-void dump_memo_panel() {
 	if (!file_exists(LOCALCACHE)) {
 		if (par_easycurl_to_file(WORDSURL, LOCALCACHE)) {
 			SI_Error rc = memo_state.ini.LoadFile(LOCALCACHE);
@@ -588,7 +587,10 @@ void dump_memo_panel() {
 			return;
 		};
 	}
+	refresh_memo_panel();
+}
 
+void dump_memo_panel() {
 	CSimpleIniA::TNamesDepend sects;
 	memo_state.ini.GetAllSections(sects);
 
@@ -601,32 +603,6 @@ void dump_memo_panel() {
 }
 
 void print_memo_panel() {
-	if (!file_exists(LOCALCACHE)) {
-		if (par_easycurl_to_file(WORDSURL, LOCALCACHE)) {
-			SI_Error rc = memo_state.ini.LoadFile(LOCALCACHE);
-			if (rc < 0) {
-				ERROR("%s: unable to load words data (error 0x%X)\n", argv0, rc);
-				return;
-			};
-		} else {
-			if (!file_exists(LOCALCACHE)) {
-				ERROR("Words file not found\n");
-			} else {
-				SI_Error rc = memo_state.ini.LoadFile(LOCALCACHE);
-				if (rc < 0) {
-					ERROR("Unable to load words data (error 0x%X)\n", rc);
-					return;
-				};
-			}
-		}
-	} else {
-		SI_Error rc = memo_state.ini.LoadFile(LOCALCACHE);
-		if (rc < 0) {
-			ERROR("Unable to load words data (error 0x%X)\n", rc);
-			return;
-		};
-	}
-
 	CSimpleIniA::TNamesDepend sects;
 	memo_state.ini.GetAllSections(sects);
 
@@ -675,9 +651,9 @@ void refresh_memo_panel() {
 			} else {
 				key += "!";
 			}
-			memo_state.selection = std::string("|") + sect + std::string(",") + key;
+			memo_state.selection = std::string("/") + sect + std::string(",") + key;
 		} else {
-			memo_state.selection = std::string("|Missing data");
+			memo_state.selection = std::string("/Missing data");
 		}
 	}
 	gettimeofday(&memo_state.t2, NULL);
@@ -692,9 +668,9 @@ void refresh_memo_panel() {
 		struct stat attr;
 		stat(LOCALCACHE, &attr);
 		memo_state.fileEdge = time(NULL) - attr.st_mtime;
-		strftime(file_ctime, 128, "|Cache %H:%M", localtime(&(attr.st_mtime)));
+		strftime(file_ctime, 128, "/cache %H:%M", localtime(&(attr.st_mtime)));
 	}
-	memo_state.stats = f_ssprintf("v%s|%d%s%s", APPVERSION, int(memo_state.refreshrate - memo_state.elapsedTime), file_ctime, memo_state.selection.c_str());
+	memo_state.stats = f_ssprintf("v%s/%d%s%s", APPVERSION, int(memo_state.refreshrate - memo_state.elapsedTime), file_ctime, memo_state.selection.c_str());
 }
 
 /// resources
