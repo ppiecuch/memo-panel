@@ -200,12 +200,12 @@ void fbdev_flush(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_p)
 	else if (vinfo.bits_per_pixel == 16) {
 		uint16_t *fbp16 = (uint16_t *)fbp;
 #ifdef CLOCKWORK_DEVTERM
-		int i, j, k, w = vinfo.xres, line_length = finfo.line_length/2;
+		int i, j, k, fw = vinfo.xres, line_length = finfo.line_length/2;
 		uint16_t *color_p16 = (uint16_t *)color_p;
 
 		for (i = act_y1; i <= act_y2; i++) {
 			for (j = act_x1, k = 0; j <= act_x2; j++,k++) {
-				fbp16[(w-i)+j*line_length] = color_p16[k];
+				fbp16[(fw-i)+j*line_length] = color_p16[k];
 			}
 			color_p16 += w;
 		}
