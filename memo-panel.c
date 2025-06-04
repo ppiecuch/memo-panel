@@ -377,12 +377,12 @@ static void panel_init(char *prog_name, lv_obj_t *root) {
 
 	lv_style_init(&style_memo);
 
-	lv_style_set_border_width(&style_memo, LV_STATE_DEFAULT, 0);
-	lv_style_set_pad_top(&style_memo, LV_STATE_DEFAULT, 0);
-	lv_style_set_pad_bottom(&style_memo, LV_STATE_DEFAULT, 0);
-	lv_style_set_pad_left(&style_memo, LV_STATE_DEFAULT, 0);
-	lv_style_set_pad_right(&style_memo, LV_STATE_DEFAULT, 0);
-	lv_style_set_pad_inner(&style_memo, LV_STATE_DEFAULT, 0);
+	// lv_style_set_border_width(&style_memo, LV_STATE_DEFAULT, 0);
+	// lv_style_set_pad_top(&style_memo, LV_STATE_DEFAULT, 0);
+	// lv_style_set_pad_bottom(&style_memo, LV_STATE_DEFAULT, 0);
+	// lv_style_set_pad_left(&style_memo, LV_STATE_DEFAULT, 0);
+	// lv_style_set_pad_right(&style_memo, LV_STATE_DEFAULT, 0);
+	// lv_style_set_pad_inner(&style_memo, LV_STATE_DEFAULT, 0);
 
 	lv_obj_add_style(memo_panel, LV_CONT_PART_MAIN, &style_memo);
 
