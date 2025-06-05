@@ -360,6 +360,8 @@ typedef void * lv_indev_drv_user_data_t;            /*Type of user data in the i
 #define LV_FONT_MONTSERRAT_44    0
 #define LV_FONT_MONTSERRAT_46    0
 #define LV_FONT_MONTSERRAT_48    0
+#define LV_FONT_MONTSERRAT_72    0
+#define LV_FONT_MONTSERRAT_96    0
 
 /* Demonstrate special features */
 #define LV_FONT_MONTSERRAT_12_SUBPX      0

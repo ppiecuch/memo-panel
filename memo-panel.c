@@ -67,7 +67,7 @@ static const char *MONTH[] = { "January", "February", "March", "April", "May", "
 
 static lv_style_t style_extra1, style_extra2, style_large, style_clock, style_memo;
 static const lv_task_t *time_task, *net_task, *memo_task, *weather_task;
-static const lv_font_t *font_extra1 = &lv_font_montserrat_48, *font_extra2 = &lv_font_montserrat_36, *font_large = &lv_font_montserrat_24, *font_normal = &lv_font_montserrat_16;
+static const lv_font_t *font_extra1 = &lv_font_montserrat_72, *font_extra2 = &lv_font_montserrat_36, *font_large = &lv_font_montserrat_24, *font_normal = &lv_font_montserrat_16;
 
 static lv_obj_t *clock_label[8];
 static lv_obj_t *date_label, *weather_label, *memo1_label, *memo2_label;

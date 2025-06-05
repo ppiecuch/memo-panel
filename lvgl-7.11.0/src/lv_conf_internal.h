@@ -1031,6 +1031,20 @@ e.g. "stm32f769xx.h" or "stm32f429xx.h" */
 #    define  LV_FONT_MONTSERRAT_48    0
 #  endif
 #endif
+#ifndef LV_FONT_MONTSERRAT_72
+#  ifdef CONFIG_LV_FONT_MONTSERRAT_72
+#    define LV_FONT_MONTSERRAT_72 CONFIG_LV_FONT_MONTSERRAT_72
+#  else
+#    define  LV_FONT_MONTSERRAT_72    0
+#  endif
+#endif
+#ifndef LV_FONT_MONTSERRAT_96
+#  ifdef CONFIG_LV_FONT_MONTSERRAT_96
+#    define LV_FONT_MONTSERRAT_96 CONFIG_LV_FONT_MONTSERRAT_72
+#  else
+#    define  LV_FONT_MONTSERRAT_96    0
+#  endif
+#endif
 
 /* Demonstrate special features */
 #ifndef LV_FONT_MONTSERRAT_12_SUBPX

@@ -431,6 +431,10 @@ menu "LVGL configuration"
                 bool "Enable Montserrat 46"
             config LV_FONT_MONTSERRAT_48
                 bool "Enable Montserrat 48"
+            config LV_FONT_MONTSERRAT_72
+                bool "Enable Montserrat 72"
+            config LV_FONT_MONTSERRAT_96
+                bool "Enable Montserrat 96"
             config LV_FONT_UNSCII_8
                 bool "Enable UNSCII 8 (Perfect monospace font)"
                 default y if LV_CONF_MINIMAL
