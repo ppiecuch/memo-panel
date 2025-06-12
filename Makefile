@@ -61,12 +61,12 @@ OBJS = $(COBJS)
 
 all: default
 
-$(OBJDIR)/%.o: %.c memo-panel-sup.h
+$(OBJDIR)/%.o: %.c memo-panel-sup.h lv_conf.h
 	@mkdir -p $(dir $@)
 	@echo "CC $< -> $@"
 	@$(CC)  $(CFLAGS) -c $< -o $@
 
-$(OBJDIR)/%.o: %.cpp memo-panel-sup.h
+$(OBJDIR)/%.o: %.cpp memo-panel-sup.h lv_conf.h
 	@mkdir -p $(dir $@)
 	@echo "CXX $< -> $@"
 	@$(CXX) -std=c++14 $(CFLAGS) -c $< -o $@
