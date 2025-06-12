@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <cstddef>
 #ifndef __APPLE__
 #include <sys/prctl.h>
 #endif
@@ -74,20 +75,20 @@ static FILEW flog("echo.log", "w");
 #define LOG(fmt, ...)                                          \
 	do {                                                       \
 		if (verbose) {                                         \
-			fprintf(flog, "[words-memo] " fmt, ##__VA_ARGS__); \
+			fprintf(flog, "[memo-panel] " fmt, ##__VA_ARGS__); \
 			fflush(flog);                                      \
 		}                                                      \
 	} while (0)
 
 #define INFO(fmt, ...)                                     \
 	do {                                                   \
-		fprintf(flog, "[words-memo] " fmt, ##__VA_ARGS__); \
+		fprintf(flog, "[memo-panel] " fmt, ##__VA_ARGS__); \
 		fflush(flog);                                      \
 	} while (0)
 
 #define ERROR(fmt, ...)                                    \
 	{                                                      \
-		fprintf(flog, "[words-memo] " fmt, ##__VA_ARGS__); \
+		fprintf(flog, "[memo-panel] " fmt, ##__VA_ARGS__); \
 		fflush(flog);                                      \
 	}
 
@@ -371,6 +372,26 @@ static bool write_file(const char *path, const void *data, int len) {
 	return (n == len);
 }
 
+/// simple thread wrapper
+
+struct thread_handle {
+	std::thread thrd;
+	thread_handle(void (*func)(void *), void *arg) :
+			thrd([func, arg]() { func(arg); }) {}
+};
+
+thread_handle_t *thread_handle_create(void (*func)(void *), void *arg) {
+	return new thread_handle(func, arg);
+}
+
+void thread_handle_destroy(thread_handle_t *handle) {
+	if (handle) {
+		if (handle->thrd.joinable())
+			handle->thrd.join();
+		delete handle;
+	}
+}
+
 /// internal cron implementation
 
 struct TimedWaiter {
@@ -405,11 +426,12 @@ using namespace datetime_utils::crontab;
 
 bool background_running = true;
 
-void cron_run() {
+extern "C" void cron_run(void *arg) {
 	std::vector<std::string> crontab = {
-		"* */15 9-17 * * mon,tue,thu,fri daily",
-		"* */20 10-18 * * sat weekend1",
-		"* */30 12-18 * * sun weekend2",
+		"* */15 9-17 * * mon,tue,thu,fri daily15",
+		"* */60 9-17 * * mon,tue,thu,fri daily60",
+		"* */20 10-18 * * sat weekend1_20",
+		"* */30 12-18 * * sun weekend2_30",
 	};
 
 	INFO("Internal cron started with %ld entries.\n", crontab.size());
@@ -450,6 +472,14 @@ void cron_run() {
 	} while (c_wait_timer.wait_for(std::chrono::seconds(pause)));
 
 	INFO("Internal cron ended - pending %ld tasks.\n", cron_events.size());
+}
+
+void cron_test() {
+	if (!cron_events.empty()) {
+		const task_t &event = take(cron_events);
+		if (event.task == "daily60")
+			print_memo_panel();
+	}
 }
 
 /// memo support
@@ -558,6 +588,8 @@ static void print_memo(const std::string &line1, const std::string &line2, int d
 	write_file(prnt, "\n\n\n\n\n\n\n\n\n\n", 10);
 }
 
+static thread_handle_t *cron_thread = NULL;
+
 void init_memo_panel() {
 	gettimeofday(&memo_state.t1, NULL);
 	memo_state.ini.SetUnicode();
@@ -588,6 +620,12 @@ void init_memo_panel() {
 		};
 	}
 	refresh_memo_panel();
+	cron_thread = thread_handle_create(cron_run, nullptr);
+}
+
+void finish_memo_panel() {
+	background_running = false;
+	thread_handle_destroy(cron_thread);
 }
 
 void dump_memo_panel() {
@@ -674,6 +712,8 @@ void refresh_memo_panel() {
 		strftime(file_ctime, 128, "/cache %H:%M", localtime(&(attr.st_mtime)));
 	}
 	memo_state.stats = f_ssprintf("v%s/%d%s%s", APPVERSION, int(memo_state.refreshrate - memo_state.elapsedTime), file_ctime, memo_state.selection.c_str());
+
+	cron_test();
 }
 
 /// resources

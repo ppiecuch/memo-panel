@@ -569,6 +569,7 @@ int main(int argc, char *argv[]) {
 		usleep(5000);
 	}
 
+	finish_memo_panel();
 	hal_exit();
 	return 0;
 }
