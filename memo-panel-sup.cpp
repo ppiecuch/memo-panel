@@ -420,8 +420,6 @@ struct task_t {
 	std::string task;
 };
 
-static std::vector<task_t> cron_events;
-
 using namespace datetime_utils::crontab;
 
 bool background_running = true;
@@ -436,13 +434,15 @@ extern "C" void cron_run(void *arg) {
 
 	INFO("Internal cron started with %ld entries.\n", crontab.size());
 
-	unsigned pause;
+	long pause;
 	std::vector<task_t> tasks;
 	do {
 		if (!is_background_running())
 			break;
 
 		for (const task_t &t : tasks) {
+			if (t.task == "daily60")
+				print_memo_panel();
 		}
 
 		time_t Now(time(nullptr));
@@ -451,11 +451,11 @@ extern "C" void cron_run(void *arg) {
 		for (int i = 0; i < crontab.size(); i++) {
 			cron c = crontab[i];
 			time_t rawtime = c.next_date(Now);
-			int schedule = rawtime - Now;
+			long schedule = rawtime - Now;
 
 			char buffer[80];
 			strftime(buffer, 80, "%Y/%m/%d %H:%M:%S", localtime(&rawtime));
-			LOG("The job \"%s\" lanched at: %ld (%s), in %d sec. - \"%s\"\n", c.expression().c_str(), rawtime, buffer, schedule, crontab[i].c_str());
+			LOG("The job \"%s\" lanched at: %ld (%s), in %ld sec. - \"%s\"\n", c.expression().c_str(), rawtime, buffer, schedule, crontab[i].c_str());
 
 			if (!pause || schedule < pause) {
 				pause = schedule;
@@ -471,15 +471,7 @@ extern "C" void cron_run(void *arg) {
 			pause = 1;
 	} while (c_wait_timer.wait_for(std::chrono::seconds(pause)));
 
-	INFO("Internal cron ended - pending %ld tasks.\n", cron_events.size());
-}
-
-void cron_test() {
-	if (!cron_events.empty()) {
-		const task_t &event = take(cron_events);
-		if (event.task == "daily60")
-			print_memo_panel();
-	}
+	INFO("Internal cron ended - pending %ld tasks.\n", tasks.size());
 }
 
 /// memo support
@@ -712,8 +704,6 @@ void refresh_memo_panel() {
 		strftime(file_ctime, 128, "/cache %H:%M", localtime(&(attr.st_mtime)));
 	}
 	memo_state.stats = f_ssprintf("v%s/%d%s%s", APPVERSION, int(memo_state.refreshrate - memo_state.elapsedTime), file_ctime, memo_state.selection.c_str());
-
-	cron_test();
 }
 
 /// resources
