@@ -429,7 +429,9 @@ extern "C" void cron_run(void *arg) {
 		"* */15 9-17 * * mon,tue,thu,fri daily15",
 		"* */60 9-17 * * mon,tue,thu,fri daily60",
 		"* */20 10-18 * * sat weekend1_20",
+		"* */60 10-15 * * sat weekend1_60",
 		"* */30 12-18 * * sun weekend2_30",
+		"* */60 12-15 * * sun weekend2_60",
 	};
 
 	INFO("Internal cron started with %ld entries.\n", crontab.size());
@@ -441,7 +443,7 @@ extern "C" void cron_run(void *arg) {
 			break;
 
 		for (const task_t &t : tasks) {
-			if (t.task == "daily60")
+			if (t.task == "daily60" || t.task == "weekend1_60" || t.task == "weekend2_60")
 				print_memo_panel();
 		}
 
