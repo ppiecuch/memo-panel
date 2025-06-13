@@ -124,6 +124,7 @@ enum field_name {
 	month,
 	day_of_week,
 	year,
+	fields_count,
 	expr = 194 + SCOPE_OF_YEARS * 2 + 1
 }; // Adressage : field_name::hour
 
