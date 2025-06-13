@@ -556,7 +556,7 @@ namespace crontab {
 
 byte cron::index(field_name const nfield) {
 	static bool b(false);
-	static byte index[field_name::year] = { 0 };
+	static byte index[field_name::fields_count] = { 0 };
 	if (!b) {
 		b = true;
 		for (byte i(1); i <= field_name::year; i++)
