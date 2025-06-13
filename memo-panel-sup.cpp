@@ -466,7 +466,7 @@ extern "C" void cron_run(void *arg) {
 		}
 
 		if (pause > 0)
-			INFO("Waiting for %d sec.\n", pause);
+			INFO("Waiting for %ld sec.\n", pause);
 		else
 			pause = 1;
 	} while (c_wait_timer.wait_for(std::chrono::seconds(pause)));
