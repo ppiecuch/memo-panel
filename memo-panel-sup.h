@@ -30,7 +30,7 @@ void thread_handle_destroy(thread_handle_t *handle); // Wait for the thread to f
 
 #define WORDSURL "https://raw.githubusercontent.com/ppiecuch/shared-assets/master/words.txt"
 #define LOCALCACHE "/tmp/words-memo.txt"
-#define APPVERSION "0.9.3"
+#define APPVERSION "0.9.4"
 
 #ifdef __cplusplus
 }
