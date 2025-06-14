@@ -466,7 +466,11 @@ extern "C" void cron_run(void *arg) {
 		tasks.clear(), pause = 0;
 		for (size_t i = 0; i < crontab.size(); i++) {
 			cron c = crontab[i];
+
 			time_t rawtime = c.next_date(Now);
+			if (rawtime < 0)
+				continue;
+
 			long schedule = rawtime - Now;
 
 			char buffer[80];
