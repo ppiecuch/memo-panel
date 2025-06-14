@@ -72,7 +72,7 @@ static const lv_font_t *font_extra1 = &lv_font_montserrat_72, *font_extra2 = &lv
 static lv_obj_t *clock_label[8];
 static lv_obj_t *date_label, *weather_label, *memo1_label, *memo2_label;
 
-static lv_obj_t *led1;
+static lv_obj_t *led1, *led2;
 static lv_obj_t *controls_panel, *memo_panel;
 
 static char weatherString[64] = { 0 };
@@ -112,6 +112,14 @@ static void time_timer_cb(lv_task_t *timer) {
 
 	lv_label_set_text(memo1_label, get_memo_line1());
 	lv_label_set_text(memo2_label, get_memo_line2());
+
+	if (cron_next_schedule > 0 && cron_next_schedule < 15) {
+		if (cron_next_schedule % 3 == 0)
+			lv_led_on(led2);
+		else
+			lv_led_off(led2);
+	} else
+		lv_led_off(led2);
 }
 
 static int get_current_network_speed_cb() {
@@ -440,6 +448,11 @@ static void panel_init(char *prog_name, lv_obj_t *root) {
 	lv_obj_set_pos(led1, LV_HOR_RES_MAX - 15, 1);
 	lv_obj_set_size(led1, 14, 14);
 	lv_led_off(led1);
+
+	led2 = lv_led_create(controls_panel, NULL);
+	lv_obj_set_pos(led2, LV_HOR_RES_MAX - 15, 16);
+	lv_obj_set_size(led2, 14, 14);
+	lv_led_off(led2);
 
 	// Start processing ..
 

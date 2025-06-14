@@ -435,6 +435,7 @@ struct task_t {
 using namespace datetime_utils::crontab;
 
 bool background_running = true;
+long cron_next_schedule = 0;
 
 extern "C" void cron_run(void *arg) {
 	std::vector<std::string> crontab = {
@@ -491,6 +492,8 @@ extern "C" void cron_run(void *arg) {
 			INFO("Waiting for %ld sec.\n", pause);
 		else
 			pause = 1;
+
+		cron_next_schedule = pause;
 	} while (c_wait_timer.wait_for(std::chrono::seconds(pause)));
 
 	INFO("Internal cron ended - pending %ld tasks.\n", tasks.size());

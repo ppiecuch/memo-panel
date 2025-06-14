@@ -28,9 +28,11 @@ typedef struct thread_handle thread_handle_t;
 thread_handle_t *thread_handle_create(void (*func)(void *), void *arg); // Create a new thread, running the given function with the given argument
 void thread_handle_destroy(thread_handle_t *handle); // Wait for the thread to finish and destroy the handle
 
+extern long cron_next_schedule;
+
 #define WORDSURL "https://raw.githubusercontent.com/ppiecuch/shared-assets/master/words.txt"
 #define LOCALCACHE "/tmp/words-memo.txt"
-#define APPVERSION "0.9.4"
+#define APPVERSION "0.9.5"
 
 #ifdef __cplusplus
 }
