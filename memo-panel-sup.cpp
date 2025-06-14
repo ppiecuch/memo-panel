@@ -469,7 +469,7 @@ extern "C" void cron_run(void *arg) {
 
 			time_t rawtime = c.next_date(Now);
 			if (rawtime < 0) {
-				LOG("Skip job \"%s\" scheduled at: %s - \"%s\"\n", c.expression().c_str(), schedule, crontab[i].c_str());
+				LOG("Skip job \"%s\" - \"%s\"\n", c.expression().c_str(), crontab[i].c_str());
 				continue;
 			}
 
