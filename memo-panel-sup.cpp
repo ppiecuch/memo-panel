@@ -438,12 +438,12 @@ bool background_running = true;
 
 extern "C" void cron_run(void *arg) {
 	std::vector<std::string> crontab = {
-		"* */15 9-17 * * mon,tue,thu,fri daily15",
-		"* */59 9-17 * * mon,tue,thu,fri daily60",
-		"* */20 10-18 * * sat weekend1_20",
-		"* */59 10-15 * * sat weekend1_60",
-		"* */30 12-18 * * sun weekend2_30",
-		"* */59 12-15 * * sun weekend2_60",
+		"* */15 9-17 * * mon,tue,thu,fri daily_frequently",
+		"* */50 9-17 * * mon,tue,thu,fri daily_rarely",
+		"* */25 10-18 * * sat weekend1_frequently",
+		"* */50 10-15 * * sat weekend1_rarely",
+		"* */25 12-18 * * sun weekend2_frequently",
+		"* */50 12-15 * * sun weekend2_rarely",
 	};
 
 	INFO("Internal cron started with %ld entries.\n", crontab.size());
@@ -455,7 +455,7 @@ extern "C" void cron_run(void *arg) {
 			break;
 
 		for (const task_t &t : tasks) {
-			if (t.task == "daily60" || t.task == "weekend1_60" || t.task == "weekend2_60") {
+			if (t.task == "daily_rarely" || t.task == "weekend1_rarely" || t.task == "weekend2_rarely") {
 				LOG("Processing task %s\n", t.task.c_str());
 				print_memo_panel();
 			}
@@ -468,14 +468,16 @@ extern "C" void cron_run(void *arg) {
 			cron c = crontab[i];
 
 			time_t rawtime = c.next_date(Now);
-			if (rawtime < 0)
+			if (rawtime < 0) {
+				LOG("Skip job \"%s\" scheduled at: %s - \"%s\"\n", c.expression().c_str(), schedule, crontab[i].c_str());
 				continue;
+			}
 
 			long schedule = rawtime - Now;
 
 			char buffer[80];
 			strftime(buffer, 80, "%Y/%m/%d %H:%M:%S", localtime(&rawtime));
-			LOG("The job \"%s\" lanched at: %ld (%s), in %ld sec. - \"%s\"\n", c.expression().c_str(), rawtime, buffer, schedule, crontab[i].c_str());
+			LOG("The job \"%s\" scheduled at: %ld (%s), in %ld sec. - \"%s\"\n", c.expression().c_str(), rawtime, buffer, schedule, crontab[i].c_str());
 
 			if (!pause || schedule < pause) {
 				pause = schedule;
