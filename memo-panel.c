@@ -552,7 +552,7 @@ int main(int argc, char *argv[]) {
 	srand(time(NULL));
 	set_argv0(argv[0]);
 
-	char c;
+	int c;
 	while ((c = getopt(argc, argv, "v")) != -1) {
 		switch (c) {
 			case 'v':
