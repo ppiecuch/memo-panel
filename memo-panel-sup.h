@@ -13,6 +13,9 @@ void dump_memo_panel();
 void print_memo_panel();
 void finish_memo_panel();
 
+void enable_verbose();
+void disable_verbose();
+
 bool is_background_running();
 void set_background_running(bool state);
 void set_argv0(const char *argv0);

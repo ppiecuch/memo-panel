@@ -98,6 +98,18 @@ static FILEW flog("echo.log", "w");
     snprintf(_ss_ret, _ss_size+1, ##__VA_ARGS__);       \
     _ss_ret; })
 
+void enable_verbose() {
+	verbose = true;
+	LOG("Verbose output enabled (app. version %s, build %s, debug %s).\n", APPVERSION, __DATE__,
+#ifdef DEBUG
+			"on"
+#else
+			"off"
+#endif
+	);
+}
+void disable_verbose() { verbose = false; }
+
 template <typename String>
 String string_replace_all(String &str, const String &from, const String &to) {
 	if (from.empty())
@@ -427,11 +439,11 @@ bool background_running = true;
 extern "C" void cron_run(void *arg) {
 	std::vector<std::string> crontab = {
 		"* */15 9-17 * * mon,tue,thu,fri daily15",
-		"* */60 9-17 * * mon,tue,thu,fri daily60",
+		"* */59 9-17 * * mon,tue,thu,fri daily60",
 		"* */20 10-18 * * sat weekend1_20",
-		"* */60 10-15 * * sat weekend1_60",
+		"* */59 10-15 * * sat weekend1_60",
 		"* */30 12-18 * * sun weekend2_30",
-		"* */60 12-15 * * sun weekend2_60",
+		"* */59 12-15 * * sun weekend2_60",
 	};
 
 	INFO("Internal cron started with %ld entries.\n", crontab.size());
@@ -443,8 +455,10 @@ extern "C" void cron_run(void *arg) {
 			break;
 
 		for (const task_t &t : tasks) {
-			if (t.task == "daily60" || t.task == "weekend1_60" || t.task == "weekend2_60")
+			if (t.task == "daily60" || t.task == "weekend1_60" || t.task == "weekend2_60") {
+				LOG("Processing task %s\n", t.task.c_str());
 				print_memo_panel();
+			}
 		}
 
 		time_t Now(time(nullptr));

@@ -552,6 +552,15 @@ int main(int argc, char *argv[]) {
 	srand(time(NULL));
 	set_argv0(argv[0]);
 
+	char c;
+	while ((c = getopt(argc, argv, "v")) != -1) {
+		switch (c) {
+			case 'v':
+				enable_verbose();
+				break;
+		}
+	}
+
 	lv_init(); // LVGL init
 	lv_png_init(); // png file support
 
