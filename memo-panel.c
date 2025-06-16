@@ -1,3 +1,4 @@
+#include "lvgl-7.11.0/src/lv_widgets/lv_cont.h"
 #if LVGL == 7
 #include "lv_lib_png/lv_png.h"
 #endif
@@ -380,7 +381,6 @@ static void panel_init(char *prog_name, lv_obj_t *root) {
 	memo_panel = lv_cont_create(root, NULL);
 	lv_obj_set_pos(memo_panel, 0, 0);
 	lv_obj_set_size(memo_panel, lv_obj_get_width(root), lv_obj_get_height(root) - 150);
-	lv_obj_set_auto_realign(memo_panel, true); /*Auto realign when the size changes*/
 	lv_cont_set_layout(memo_panel, LV_LAYOUT_COLUMN_LEFT);
 
 	lv_style_init(&style_memo);
@@ -394,9 +394,16 @@ static void panel_init(char *prog_name, lv_obj_t *root) {
 
 	lv_obj_add_style(memo_panel, LV_CONT_PART_MAIN, &style_memo);
 
-	printf("%s[INFO]%s Memo panel is: %d x %d\n",
+#define PADL(cont) lv_obj_get_style_pad_left(cont, LV_CONT_PART_MAIN)
+#define PADR(cont) lv_obj_get_style_pad_right(cont, LV_CONT_PART_MAIN)
+#define PADI(cont) lv_obj_get_style_pad_inner(cont, LV_CONT_PART_MAIN)
+
+#define PAD(cont) (PADL(cont) + PADR(cont))
+
+	printf("%s[INFO]%s Memo panel is: %d x %d, padding: %d/%d/%d\n",
 			GREEN, NORMAL_COLOR,
-			lv_obj_get_width(memo_panel), lv_obj_get_height(memo_panel));
+			lv_obj_get_width(memo_panel), lv_obj_get_height(memo_panel),
+			lv_obj_get_style_pad_left(memo_panel, LV_CONT_PART_MAIN), lv_obj_get_style_pad_right(memo_panel, LV_CONT_PART_MAIN), lv_obj_get_style_pad_inner(memo_panel, LV_CONT_PART_MAIN));
 
 	weather_timer_cb(NULL);
 
@@ -406,13 +413,15 @@ static void panel_init(char *prog_name, lv_obj_t *root) {
 	lv_label_set_text(memo1_label, "...");
 	lv_obj_add_style(memo1_label, LV_LABEL_PART_MAIN, &style_extra1);
 	lv_label_set_long_mode(memo1_label, LV_LABEL_LONG_SROLL);
-	lv_obj_set_width(memo1_label, lv_obj_get_width(memo_panel));
+	lv_obj_set_auto_realign(memo1_label, true);
+	lv_obj_set_width(memo1_label, lv_obj_get_width(memo_panel) - PAD(memo_panel));
 
 	memo2_label = lv_label_create(memo_panel, NULL);
 	lv_label_set_text(memo2_label, "...");
 	lv_obj_add_style(memo2_label, LV_LABEL_PART_MAIN, &style_extra2);
 	lv_label_set_long_mode(memo2_label, LV_LABEL_LONG_SROLL);
-	lv_obj_set_width(memo2_label, lv_obj_get_width(memo_panel));
+	lv_obj_set_auto_realign(memo2_label, true);
+	lv_obj_set_width(memo2_label, lv_obj_get_width(memo_panel) - PAD(memo_panel));
 
 	// Time/date controls
 
