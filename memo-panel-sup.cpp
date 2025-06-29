@@ -469,22 +469,24 @@ extern "C" void cron_run(void *arg) {
 			cron c = crontab[i];
 
 			time_t rawtime = c.next_date(Now);
-			if (rawtime < 0) {
-				LOG("Skip job \"%s\" - \"%s\"\n", c.expression().c_str(), crontab[i].c_str());
+			if (rawtime == -4) { // empty cron or now match (tbc)
+				pause = 0;
+			} else if (rawtime < 0) {
+				LOG("Skip job \"%s\" (%ld) - \"%s\"\n", c.expression().c_str(), rawtime, crontab[i].c_str());
 				continue;
-			}
+			} else {
+				long schedule = rawtime - Now;
 
-			long schedule = rawtime - Now;
+				char buffer[80];
+				strftime(buffer, 80, "%Y/%m/%d %H:%M:%S", localtime(&rawtime));
+				LOG("The job \"%s\" scheduled at: %ld (%s), in %ld sec. - \"%s\"\n", c.expression().c_str(), rawtime, buffer, schedule, crontab[i].c_str());
 
-			char buffer[80];
-			strftime(buffer, 80, "%Y/%m/%d %H:%M:%S", localtime(&rawtime));
-			LOG("The job \"%s\" scheduled at: %ld (%s), in %ld sec. - \"%s\"\n", c.expression().c_str(), rawtime, buffer, schedule, crontab[i].c_str());
-
-			if (!pause || schedule < pause) {
-				pause = schedule;
-				tasks.assign({ { rawtime, c.expression() } });
-			} else if (schedule == pause) {
-				tasks.push_back({ rawtime, c.expression() });
+				if (!pause || schedule < pause) {
+					pause = schedule;
+					tasks.assign({ { rawtime, c.expression() } });
+				} else if (schedule == pause) {
+					tasks.push_back({ rawtime, c.expression() });
+				}
 			}
 		}
 

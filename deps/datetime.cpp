@@ -621,6 +621,7 @@ void cron::set_field(field_name const nfield, std::string first, bool v) {
 		if ((first.compare("*") != 0 && !is_numeric(normalize_field(nfield, first))) || !is_numeric(second))
 			conv_error(true);
 		else {
+			printf("%s -> %d\n", first.c_str(), atoi(first.c_str()));
 			set_scope(nfield, v, atoi(first.c_str()), field_size[nfield] - 1, atoi(second.c_str()));
 		}
 	} else if (first.compare("*") == 0) {
@@ -693,7 +694,7 @@ time_t cron::date_around(const std::tm &timeinfo, bool next) {
 		int month_size((nfield == field_name::day_of_month) ? size_of_month(result) : 0);
 		byte i(date.find_bit(field_name(nfield), 0)), j(i);
 		if (i == npos)
-			return time_t(-1);
+			return time_t(-2);
 
 		if (is_set(field_name(nfield)) && !(nfield == field_name::year && match)) {
 			tminfo[nfield] = 0;
@@ -712,7 +713,7 @@ time_t cron::date_around(const std::tm &timeinfo, bool next) {
 						nfield++;
 						break;
 					} else
-						return time_t(-1);
+						return time_t(-3);
 				}
 			}
 
@@ -746,7 +747,7 @@ time_t cron::date_around(const std::tm &timeinfo, bool next) {
 					} // previous on cron "* * * X(matching) * * * cmd"
 				}
 			if (nfield == byte(-1))
-				return time_t(-1); // cron is "* * * * * * * cmd"
+				return time_t(-4); // cron is "* * * * * * * cmd"
 		}
 	}
 	return mktime(&result);
