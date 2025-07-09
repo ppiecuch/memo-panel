@@ -522,7 +522,7 @@ static void hal_init() {
 	lv_indev_drv_init(&kb_drv);
 	kb_drv.type = LV_INDEV_TYPE_KEYPAD;
 	kb_drv.read_cb = keyboard_read; // Use our custom keyboard handler
-	kb_indev = lv_indev_drv_register(&kb_drv);
+	lv_indev_drv_register(&kb_drv);
 }
 
 static void hal_exit() {
