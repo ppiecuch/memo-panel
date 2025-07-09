@@ -6,6 +6,8 @@
 #ifdef __linux__
 #include "lvgl/lv_drivers/display/fbdev.h"
 #include "lvgl/lv_drivers/indev/evdev.h"
+#include <fcntl.h>
+#include <linux/input.h>
 #else /* __linux__ */
 #if LVGL == 7
 #include "lvgl/lv_drivers/display/monitor.h"
@@ -67,7 +69,7 @@ static const char *DAY[] = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursd
 static const char *MONTH[] = { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" };
 
 static lv_style_t style_extra1, style_extra2, style_large, style_clock, style_memo;
-static const lv_task_t *time_task, *net_task, *memo_task, *weather_task;
+static lv_task_t *time_task, *net_task, *memo_task, *weather_task;
 static const lv_font_t *font_extra1 = &lv_font_montserrat_72, *font_extra2 = &lv_font_montserrat_36, *font_large = &lv_font_montserrat_24, *font_normal = &lv_font_montserrat_16;
 
 static lv_obj_t *clock_label[8];
@@ -476,6 +478,31 @@ static void panel_init(char *prog_name, lv_obj_t *root) {
 }
 
 #ifdef __linux__
+
+// Initialize keyboard device
+static void keyboard_init(void) {
+}
+
+// Read keyboard input
+static bool keyboard_read(lv_indev_drv_t *drv, lv_indev_data_t *data) {
+	data->key = last_key(); /*Get the last pressed or released key*/
+
+	if (key_pressed())
+		data->state = LV_INDEV_STATE_PR;
+	else
+		data->state = LV_INDEV_STATE_REL;
+
+	return false; /*No buffering now so no more data read*/
+}
+
+// Cleanup keyboard device
+static void keyboard_exit(void) {
+	if (kb_fd >= 0) {
+		close(kb_fd);
+		kb_fd = -1;
+	}
+}
+
 static void hal_init() {
 	fbdev_init(); // Linux frame buffer device init
 	evdev_init(); // Touch pointer device init
@@ -498,9 +525,20 @@ static void hal_init() {
 	indev_drv.type = LV_INDEV_TYPE_POINTER;
 	indev_drv.read_cb = evdev_read; // defined in lv_drivers/indev/evdev.h
 	lv_indev_drv_register(&indev_drv);
+
+	// Initialize keyboard device
+	keyboard_init();
+
+	// Initialize and register a keyboard device driver
+	lv_indev_drv_t kb_drv;
+	lv_indev_drv_init(&kb_drv);
+	kb_drv.type = LV_INDEV_TYPE_KEYPAD;
+	kb_drv.read_cb = keyboard_read; // Use our custom keyboard handler
+	kb_indev = lv_indev_drv_register(&kb_drv);
 }
 
 static void hal_exit() {
+	keyboard_exit();
 	fbdev_exit();
 }
 
