@@ -483,6 +483,9 @@ static void panel_init(char *prog_name, lv_obj_t *root) {
 static bool keyboard_read(lv_indev_drv_t *drv, lv_indev_data_t *data) {
 	data->key = last_key(); /*Get the last pressed or released key*/
 
+	printf("%s[INFO]%s Keyboard event: %d (%d)\n",
+			GREEN, NORMAL_COLOR, data->key, key_pressed());
+
 	if (key_pressed())
 		data->state = LV_INDEV_STATE_PR;
 	else
