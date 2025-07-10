@@ -482,7 +482,6 @@ static void panel_init(char *prog_name, lv_obj_t *root) {
 }
 
 static void memopanel_event_cb(lv_obj_t *obj, lv_event_t e) {
-	lv_event_code_t code = lv_event_get_code(e);
 }
 
 #ifdef __linux__
