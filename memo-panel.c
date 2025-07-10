@@ -481,15 +481,14 @@ static void panel_init(char *prog_name, lv_obj_t *root) {
 
 // Read keyboard input
 static bool keyboard_read(lv_indev_drv_t *drv, lv_indev_data_t *data) {
-	data->key = last_key(); /*Get the last pressed or released key*/
+	static bool __last_state = LV_INDEV_STATE_REL;
+	static uint16_t __last_key = 0;
+
+	data->key = __last_key; /*Get the last pressed or released key*/
+	data->state = __last_state;
 
 	printf("%s[INFO]%s Keyboard event: %d (%d)\n",
 			GREEN, NORMAL_COLOR, data->key, key_pressed());
-
-	if (key_pressed())
-		data->state = LV_INDEV_STATE_PR;
-	else
-		data->state = LV_INDEV_STATE_REL;
 
 	return false; /*No buffering now so no more data read*/
 }
