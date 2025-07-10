@@ -488,7 +488,7 @@ static bool keyboard_read(lv_indev_drv_t *drv, lv_indev_data_t *data) {
 	data->state = __last_state;
 
 	printf("%s[INFO]%s Keyboard event: %d (%d)\n",
-			GREEN, NORMAL_COLOR, data->key, key_pressed());
+			GREEN, NORMAL_COLOR, data->key, data->state);
 
 	return false; /*No buffering now so no more data read*/
 }
