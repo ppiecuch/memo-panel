@@ -502,8 +502,7 @@ static bool keyboard_read(lv_indev_drv_t *drv, lv_indev_data_t *data) {
 	if (act_key != 0) {
 		data->state = LV_INDEV_STATE_PR;
 		if (__more_to_read) {
-			data->key = __last_key; /*Get the last pressed or released key*/
-			data->state = __last_state;
+			__last_key = keypad_get_key(); /*Get the last pressed or released key*/
 			__more_to_read = false;
 		} else {
 			printf("%s[INFO]%s Keyboard event: %d (%d)\n",
@@ -545,7 +544,7 @@ static void hal_init() {
 	lv_indev_drv_t kb_drv;
 	lv_indev_drv_init(&kb_drv);
 	kb_drv.type = LV_INDEV_TYPE_KEYPAD;
-	kb_drv.read_cb = ev_read; // Use our custom keyboard handler
+	kb_drv.read_cb = evdev_read; // Use our custom keyboard handler
 	lv_indev_drv_register(&kb_drv);
 }
 
