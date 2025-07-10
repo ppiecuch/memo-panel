@@ -486,13 +486,13 @@ static void memopanel_event_cb(lv_obj_t *obj, lv_event_t e) {
 
 #ifdef __linux__
 
-/*Get the currently being pressed key.  0 if no key is pressed*/
+/* Get the currently being pressed key. 0 if no key is pressed */
 static uint32_t keypad_get_key(void) {
 	/*Your code comes here*/
 	return 0;
 }
 
-// Read keyboard input
+// Custom read keyboard input
 // https://github.com/vsfteam/vsf/blob/master/example/template/demo/lvgl_demo/lvgl_demo.c
 static bool keyboard_read(lv_indev_drv_t *drv, lv_indev_data_t *data) {
 	static bool __more_to_read = false;
@@ -554,7 +554,7 @@ static void hal_exit() {
 
 #else /* __linux__ */
 
-// A task to measure the elapsed time for LVGL
+/* A task to measure the elapsed time for LVGL */
 static int tick_thread(void *data) {
 	(void)data;
 	while (1) {
