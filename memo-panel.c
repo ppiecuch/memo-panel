@@ -512,7 +512,7 @@ static bool keyboard_read(lv_indev_drv_t *drv, lv_indev_data_t *data) {
 		data->state = LV_INDEV_STATE_REL;
 	}
 
-	data->key = __last_state;
+	data->key = __last_key;
 
 	return __more_to_read;
 }
