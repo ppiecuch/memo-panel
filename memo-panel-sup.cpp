@@ -56,7 +56,10 @@ struct FILEW {
 	operator bool() { return f != nullptr; }
 	operator FILE *() { return f; }
 
-	FILEW(const char *path, const char *mode) { if (!open(path, mode)) f = stdout; }
+	FILEW(const char *path, const char *mode) {
+		if (!open(path, mode))
+			f = stdout;
+	}
 	~FILEW() {
 		if (f)
 			fclose(f);
