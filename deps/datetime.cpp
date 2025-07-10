@@ -618,11 +618,16 @@ void cron::set_field(field_name const nfield, std::string first, bool v) {
 		else
 			set_scope(nfield, v, atoi(first.c_str()), atoi(second.c_str()));
 	} else if (split_string(first, "/", second)) {
-		if ((first.compare("*") != 0 && !is_numeric(normalize_field(nfield, first))) || !is_numeric(second))
+		//if ((first.compare("*") != 0 && !is_numeric(normalize_field(nfield, first))) || !is_numeric(second))
+		if (!is_numeric(second)) {
 			conv_error(true);
-		else {
-			printf("%s -> %d\n", first.c_str(), atoi(first.c_str()));
-			set_scope(nfield, v, atoi(first.c_str()), field_size[nfield] - 1, atoi(second.c_str()));
+		} else {
+			byte delta = atoi(second.c_str());
+			if (first.compare("*") == 0) {
+				set_field(nfield, v, delta);
+			} else if (split_string(first, "-", second)) {
+				set_scope(nfield, v, atoi(first.c_str()), atoi(second.c_str()), delta);
+			}
 		}
 	} else if (first.compare("*") == 0) {
 		set_field(nfield, v);

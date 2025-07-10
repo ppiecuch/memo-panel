@@ -169,10 +169,10 @@ API_CALL class cron : std::bitset<field_name::expr> {
 		else
 			conv_error(true);
 	};
-	inline bool set_field(field_name const nfield, bool v) {
+	inline bool set_field(field_name const nfield, bool v, byte delta = 1) {
 		if (!existing_field(nfield))
 			return false;
-		for (byte i(index(nfield)), j(i + field_size[nfield]); i < j; i++)
+		for (byte i(index(nfield)), j(i + field_size[nfield]); i < j; i += delta)
 			set(i, v);
 		return true;
 	};
