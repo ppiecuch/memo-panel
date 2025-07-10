@@ -80,6 +80,8 @@ static lv_obj_t *controls_panel, *memo_panel;
 
 static char weatherString[64] = { 0 };
 
+static void memopanel_event_cb(lv_obj_t *_kb, lv_event_t e);
+
 // Utilities functions
 
 #define _ssprintf(...) \
@@ -396,6 +398,8 @@ static void panel_init(char *prog_name, lv_obj_t *root) {
 
 	lv_obj_add_style(memo_panel, LV_CONT_PART_MAIN, &style_memo);
 
+	lv_obj_set_event_cb(memo_panel, memopanel_event_cb);
+
 #define PADL(cont) lv_obj_get_style_pad_left(cont, LV_CONT_PART_MAIN)
 #define PADR(cont) lv_obj_get_style_pad_right(cont, LV_CONT_PART_MAIN)
 #define PADI(cont) lv_obj_get_style_pad_inner(cont, LV_CONT_PART_MAIN)
@@ -477,20 +481,41 @@ static void panel_init(char *prog_name, lv_obj_t *root) {
 	// lv_obj_set_size(checker, lv_obj_get_width(root), lv_obj_get_height(root));
 }
 
+static void memopanel_event_cb(lv_obj_t *obj, lv_event_t e) {
+}
+
 #ifdef __linux__
 
+/*Get the currently being pressed key.  0 if no key is pressed*/
+static uint32_t keypad_get_key(void) {
+	/*Your code comes here*/
+	return 0;
+}
+
 // Read keyboard input
+// https://github.com/vsfteam/vsf/blob/master/example/template/demo/lvgl_demo/lvgl_demo.c
 static bool keyboard_read(lv_indev_drv_t *drv, lv_indev_data_t *data) {
-	static bool __last_state = LV_INDEV_STATE_REL;
+	static bool __more_to_read = false;
 	static uint16_t __last_key = 0;
 
-	data->key = __last_key; /*Get the last pressed or released key*/
-	data->state = __last_state;
+	uint32_t act_key = keypad_get_key();
+	if (act_key != 0) {
+		data->state = LV_INDEV_STATE_PR;
+		if (__more_to_read) {
+			data->key = __last_key; /*Get the last pressed or released key*/
+			data->state = __last_state;
+			__more_to_read = false;
+		} else {
+			printf("%s[INFO]%s Keyboard event: %d (%d)\n",
+					GREEN, NORMAL_COLOR, data->key, data->state);
+		}
+	} else {
+		data->state = LV_INDEV_STATE_REL;
+	}
 
-	printf("%s[INFO]%s Keyboard event: %d (%d)\n",
-			GREEN, NORMAL_COLOR, data->key, data->state);
+	data->key = __last_state;
 
-	return false; /*No buffering now so no more data read*/
+	return __more_to_read;
 }
 
 static void hal_init() {
@@ -520,7 +545,7 @@ static void hal_init() {
 	lv_indev_drv_t kb_drv;
 	lv_indev_drv_init(&kb_drv);
 	kb_drv.type = LV_INDEV_TYPE_KEYPAD;
-	kb_drv.read_cb = keyboard_read; // Use our custom keyboard handler
+	kb_drv.read_cb = ev_read; // Use our custom keyboard handler
 	lv_indev_drv_register(&kb_drv);
 }
 
