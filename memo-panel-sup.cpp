@@ -472,8 +472,9 @@ extern "C" void cron_run(void *arg) {
 			cron c = crontab[i];
 
 			time_t rawtime = c.next_date(Now);
-			if (rawtime == -4) { // empty cron or now match (tbc)
-				pause = 0;
+			if (rawtime == -4) { // empty cron or now/all match (tbc)
+				tasks.clear(), pause = 0;
+				break; // restart
 			} else if (rawtime < 0) {
 				LOG("Skip job \"%s\" (%ld) - \"%s\"\n", c.expression().c_str(), rawtime, crontab[i].c_str());
 				continue;
