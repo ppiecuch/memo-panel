@@ -481,6 +481,11 @@ extern "C" void cron_run(void *arg) {
 			} else {
 				long schedule = rawtime - Now;
 
+				if (schedule <= 1) {
+					tasks.clear(), pause = 0;
+					break; // restart
+				}
+
 				char buffer[80];
 				strftime(buffer, 80, "%Y/%m/%d %H:%M:%S", localtime(&rawtime));
 				LOG("The job \"%s\" scheduled at: %ld (%s), in %ld sec. - \"%s\"\n", c.expression().c_str(), rawtime, buffer, schedule, crontab[i].c_str());
