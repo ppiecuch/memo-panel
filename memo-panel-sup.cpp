@@ -686,9 +686,9 @@ void print_memo_panel() {
 		if (memo_state.ini.KeyExists(sect, key.c_str())) {
 			std::string s = memo_state.ini.GetValue(sect, key.c_str());
 			std::string delimiter = "::";
-			memo_state.line1 = trim(s.substr(0, s.find(delimiter)));
-			memo_state.line2 = trim(s.substr(s.find(delimiter) + 2));
-			print_memo(memo_state.line1 + "\n", memo_state.line2 + "\n", 1);
+			std::string line1 = trim(s.substr(0, s.find(delimiter)));
+			std::string line2 = trim(s.substr(s.find(delimiter) + 2));
+			print_memo(line1 + "\n", line2 + "\n", 1);
 		}
 	}
 }

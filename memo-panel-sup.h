@@ -32,7 +32,7 @@ extern long cron_next_schedule;
 
 #define WORDSURL "https://raw.githubusercontent.com/ppiecuch/shared-assets/master/words.txt"
 #define LOCALCACHE "/tmp/words-memo.txt"
-#define APPVERSION "0.9.7"
+#define APPVERSION "0.9.8"
 
 #ifdef __cplusplus
 }
