@@ -20,7 +20,7 @@ if [ -f $app ]; then
   if [ -f service/$app.service ]; then
     echo "=== Installing service -> /etc/systemd/system/"
     cp service/$app.service /etc/systemd/system/
-    systemctl restart memo-panel.service
+    systemctl restart ${app}.service
   fi
   ls -l /var/app/$app/
 else
