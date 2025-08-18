@@ -186,7 +186,7 @@ bool evdev_read(lv_indev_drv_t * drv, lv_indev_data_t * data)
 				data->key = LV_KEY_DOWN;
 				break;
 			default:
-				data->key = 0;
+				data->key = (in.code < 127) ? in.code : 0;
 				break;
 		}
 		evdev_key_val = data->key;
