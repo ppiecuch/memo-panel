@@ -16,6 +16,16 @@ void finish_memo_panel();
 void enable_verbose();
 void disable_verbose();
 
+// tts functions
+void speak_memo_content();
+void speak_text(const char *text);
+void set_tts_language(const char *language);
+void set_tts_speed(float speed);
+void set_tts_cache_dir(const char *cache_dir);
+bool is_tts_available();
+void stop_tts();
+
+// integration functions
 bool is_background_running();
 void set_background_running(bool state);
 void set_argv0(const char *argv0);
@@ -32,7 +42,7 @@ extern long cron_next_schedule;
 
 #define WORDSURL "https://raw.githubusercontent.com/ppiecuch/shared-assets/master/words.txt"
 #define LOCALCACHE "/tmp/words-memo.txt"
-#define APPVERSION "0.9.8"
+#define APPVERSION "0.9.10"
 
 #ifdef __cplusplus
 }

@@ -742,6 +742,317 @@ void refresh_memo_panel() {
 	memo_state.stats = f_ssprintf("v%s/%d%s%s", APPVERSION, int(memo_state.refreshrate - memo_state.elapsedTime), file_ctime, memo_state.selection.c_str());
 }
 
+/// Text-to-Speech Implementation
+
+// Language codes mapping (subset of Google TTS supported languages)
+static const std::map<std::string, std::string> tts_lang_codes = {
+	{ "en", "English" },
+	{ "es", "Spanish" },
+	{ "fr", "French" },
+	{ "de", "German" },
+	{ "it", "Italian" },
+	{ "pt", "Portuguese" },
+	{ "ru", "Russian" },
+	{ "ja", "Japanese" },
+	{ "ko", "Korean" },
+	{ "zh", "Chinese" },
+	{ "ar", "Arabic" },
+	{ "hi", "Hindi" }
+};
+
+// TTS configuration
+static struct {
+	std::string language = "en";
+	float speed = 1.0f;
+	std::string tmp_file = "/tmp/memo_tts.mp3";
+	std::string cache_dir = "tts-cache";
+	thread_handle_t *tts_thread = nullptr;
+	std::string player_cmd = "mpg321";
+	bool is_speaking = false;
+} tts_state;
+
+// TTS URL components
+static const std::string TTS_BASE_URL = "https://translate.google.com/translate_tts?ie=UTF-8&q=";
+static const std::string TTS_LANG_PARAM = "&tl=";
+static const std::string TTS_CLIENT_PARAM = "&client=tw-ob";
+static const std::string TTS_REFERER = "Referer: http://translate.google.com/";
+static const std::string TTS_USER_AGENT = "User-Agent: stagefright/1.2 (Linux;Android 9.0)";
+
+class MemoTTS {
+private:
+	std::string url_encode_text(const std::string &text) {
+		std::string encoded = text;
+		std::string::size_type pos = 0;
+		while ((pos = encoded.find(" ", pos)) != std::string::npos) {
+			encoded.replace(pos, 1, "%20");
+			pos += 3;
+		}
+		return encoded;
+	}
+
+	bool is_mp3_file(const std::string &filename) {
+		FILEW file(filename.c_str(), "rb");
+		if (!file)
+			return false;
+		unsigned char buffer[3] = { 0, 0, 0 };
+		fread(buffer, 1, 3, file);
+		return (buffer[0] == 'I' && buffer[1] == 'D' && buffer[2] == '3') || 
+		       (buffer[0] == 0xFF && (buffer[1] & 0xE0) == 0xE0);
+	}
+
+	std::string sanitize_filename(const std::string &text) {
+		std::wstring wide_text;
+		if (!ConvertUTF8toWide(text.c_str(), wide_text)) {
+			return "";
+		}
+		std::string sanitized = trunc_wstring(simplifieDiacritics(wide_text));
+		// Replace any problematic characters for filesystem
+		for (char &c : sanitized) {
+			if (c == '/' || c == '\\' || c == ':' || c == '*' || 
+			    c == '?' || c == '"' || c == '<' || c == '>' || c == '|') {
+				c = '_';
+			}
+		}
+		return sanitized;
+	}
+
+	void ensure_cache_dir() {
+		if (!file_exists(tts_state.cache_dir)) {
+			std::string cmd = "mkdir -p " + tts_state.cache_dir;
+			system(cmd.c_str());
+			LOG("TTS: Created cache directory %s\n", tts_state.cache_dir.c_str());
+		}
+	}
+
+	void touch_file(const std::string &filename) {
+		std::string cmd = "touch '" + filename + "'";
+		system(cmd.c_str());
+	}
+
+	void cleanup_old_cache_files(int max_age_days = 7) {
+		// Clean up cache files older than max_age_days
+		std::string cmd = f_ssprintf("find %s -name '*.mp3' -type f -mtime +%d -delete 2>/dev/null",
+				tts_state.cache_dir.c_str(), max_age_days);
+		system(cmd.c_str());
+		LOG("TTS: Cleaned up cache files older than %d days\n", max_age_days);
+	}
+
+	bool download_tts_audio(const std::string &text, const std::string &language, const std::string &output_file) {
+		std::string encoded_text = url_encode_text(text);
+		std::string url = TTS_BASE_URL + encoded_text + TTS_LANG_PARAM + language + TTS_CLIENT_PARAM;
+
+		std::string cmd = f_ssprintf("curl -s '%s' -H '%s' -H '%s' -o '%s' 2>/dev/null",
+				url.c_str(), TTS_REFERER.c_str(), TTS_USER_AGENT.c_str(), output_file.c_str());
+
+		LOG("TTS: Downloading audio - %s\n", cmd.c_str());
+		int result = system(cmd.c_str());
+
+		if (result == 0 && file_exists(output_file) && file_size(output_file) > 0) {
+			LOG("TTS: Audio downloaded successfully (%zu bytes)\n", file_size(output_file));
+			return true;
+		}
+
+		LOG("TTS: Failed to download audio (result=%d, exists=%d, size=%zu)\n",
+				result, file_exists(output_file), file_size(output_file));
+		return false;
+	}
+
+	bool play_audio_file(const std::string &audio_file, float speed, bool is_cached = false) {
+		std::string speed_param = (speed != 1.0f) ? f_ssprintf(" --speed=%.1f", speed) : "";
+		std::string cmd = f_ssprintf("%s%s '%s' 2>/dev/null 1>/dev/null",
+				tts_state.player_cmd.c_str(), speed_param.c_str(), audio_file.c_str());
+
+		LOG("TTS: Playing audio - %s\n", cmd.c_str());
+		int result = system(cmd.c_str());
+
+		// Only clean up temporary files, not cached ones
+		if (!is_cached) {
+			unlink(audio_file.c_str());
+		}
+
+		return (result == 0);
+	}
+
+public:
+	bool speak_text_sync(const std::string &text, const std::string &language, float speed) {
+		static int call_count = 0;
+		
+		if (text.empty()) {
+			LOG("TTS: No text to speak\n");
+			return false;
+		}
+
+		// Ensure cache directory exists
+		ensure_cache_dir();
+		
+		// Periodically clean up old cache files (every 100 calls)
+		if (++call_count % 100 == 0) {
+			cleanup_old_cache_files(7);  // Clean files older than 7 days
+		}
+
+		// Truncate very long text to prevent URL issues
+		std::string speech_text = text.length() > 200 ? text.substr(0, 200) + "..." : text;
+
+		// Check if language is supported
+		if (tts_lang_codes.find(language) == tts_lang_codes.end()) {
+			LOG("TTS: Unsupported language '%s', using English\n", language.c_str());
+		}
+
+		// Generate cache filename based on text and language
+		std::string sanitized_text = sanitize_filename(speech_text);
+		if (sanitized_text.empty()) {
+			LOG("TTS: Failed to sanitize text for caching\n");
+			return false;
+		}
+
+		std::string cache_file = tts_state.cache_dir + "/" + sanitized_text + "_" + language + ".mp3";
+
+		// Check if we have a cached version
+		if (file_exists(cache_file) && is_mp3_file(cache_file)) {
+			LOG("TTS: Using cached audio file - %s\n", cache_file.c_str());
+			touch_file(cache_file);  // Update access time
+			return play_audio_file(cache_file, speed, true);
+		}
+
+		// Download new audio to cache
+		LOG("TTS: Downloading new audio to cache - %s\n", cache_file.c_str());
+		if (!download_tts_audio(speech_text, language, cache_file)) {
+			// Fall back to temporary file if cache write fails
+			std::string tmp_file = f_ssprintf("/tmp/memo_tts_%ld.mp3", time(nullptr));
+			if (!download_tts_audio(speech_text, language, tmp_file)) {
+				return false;
+			}
+			return play_audio_file(tmp_file, speed, false);
+		}
+
+		// Verify the downloaded file is valid MP3
+		if (!is_mp3_file(cache_file)) {
+			LOG("TTS: Downloaded file is not a valid MP3\n");
+			unlink(cache_file.c_str());
+			return false;
+		}
+
+		return play_audio_file(cache_file, speed, true);
+	}
+
+	bool check_dependencies() {
+		// Check for curl
+		if (system("which curl >/dev/null 2>&1") != 0) {
+			LOG("TTS: curl not found\n");
+			return false;
+		}
+
+		// Check for mpg321
+		if (system("which mpg321 >/dev/null 2>&1") != 0) {
+			LOG("TTS: mpg321 not found\n");
+			return false;
+		}
+
+		return true;
+	}
+};
+
+static MemoTTS tts_engine;
+
+// Background TTS thread function
+extern "C" void tts_thread_func(void *arg) {
+	std::string *text_ptr = static_cast<std::string *>(arg);
+	std::string text = *text_ptr;
+	delete text_ptr;
+
+	tts_state.is_speaking = true;
+	LOG("TTS: Starting background speech\n");
+
+	bool success = tts_engine.speak_text_sync(text, tts_state.language, tts_state.speed);
+
+	tts_state.is_speaking = false;
+	tts_state.tts_thread = nullptr;
+
+	LOG("TTS: Background speech %s\n", success ? "completed" : "failed");
+}
+
+// C API Implementation
+extern "C" {
+
+void speak_text(const char *text) {
+	if (!text || strlen(text) == 0) {
+		LOG("TTS: Empty text provided\n");
+		return;
+	}
+
+	// Stop any currently running TTS
+	stop_tts();
+
+	// Create a copy of the text for the thread
+	std::string *text_copy = new std::string(text);
+
+	// Start background TTS thread
+	tts_state.tts_thread = thread_handle_create(tts_thread_func, text_copy);
+	LOG("TTS: Started TTS thread for text: '%.50s%s'\n",
+			text, strlen(text) > 50 ? "..." : "");
+}
+
+void speak_memo_content() {
+	std::string full_text = get_memo_line1();
+	std::string line2 = get_memo_line2();
+
+	if (!line2.empty()) {
+		full_text += " " + line2;
+	}
+
+	if (full_text.empty()) {
+		LOG("TTS: No memo content to speak\n");
+		return;
+	}
+
+	LOG("TTS: Speaking memo content\n");
+	speak_text(full_text.c_str());
+}
+
+void set_tts_language(const char *language) {
+	if (language && strlen(language) > 0) {
+		tts_state.language = language;
+		LOG("TTS: Language set to '%s'\n", language);
+	}
+}
+
+void set_tts_speed(float speed) {
+	if (speed > 0.1f && speed < 3.0f) {
+		tts_state.speed = speed;
+		LOG("TTS: Speed set to %.1f\n", speed);
+	}
+}
+
+void set_tts_cache_dir(const char *cache_dir) {
+	if (cache_dir && strlen(cache_dir) > 0) {
+		tts_state.cache_dir = cache_dir;
+		LOG("TTS: Cache directory set to '%s'\n", cache_dir);
+	}
+}
+
+bool is_tts_available() {
+	static bool checked = false;
+	static bool available = false;
+
+	if (!checked) {
+		available = tts_engine.check_dependencies();
+		checked = true;
+	}
+
+	return available;
+}
+
+void stop_tts() {
+	if (tts_state.tts_thread) {
+		LOG("TTS: Stopping TTS thread\n");
+		thread_handle_destroy(tts_state.tts_thread);
+		tts_state.tts_thread = nullptr;
+	}
+	tts_state.is_speaking = false;
+}
+
+} // extern "C"
+
 /// resources
 
 /* Dividers images */

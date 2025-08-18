@@ -497,14 +497,24 @@ static bool custom_fbkb_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
 		switch (data->key) {
 			case 'r':
 			case 'R':
-				printf("Refreshing UI...\n");
+				printf("%s[INFO]%s Refreshing UI...\n", GREEN, NORMAL_COLOR);
 				lv_obj_invalidate(lv_scr_act());
 				data->key = 0;
 				break;
 			case 'p':
 			case 'P':
-				printf("Printing current memo entry...\n");
+				printf("%s[INFO]%sPrinting current memo entry...\n", GREEN, NORMAL_COLOR);
 				print_memo_panel();
+				data->key = 0;
+				break;
+			case 't':
+			case 'T':
+				if (is_tts_available()) {
+					printf("%s[INFO]%s Speaking current memo entry...\n", GREEN, NORMAL_COLOR);
+					speak_memo_content();
+				} else {
+					printf("%s[INFO]%s TTS not available (missing curl or mpg321)\n", GREEN, NORMAL_COLOR);
+				}
 				data->key = 0;
 				break;
 		}
