@@ -6,7 +6,6 @@
 #ifdef __linux__
 #include "lvgl/lv_drivers/display/fbdev.h"
 #include "lvgl/lv_drivers/indev/evdev.h"
-#include "lvgl/lv_drivers/indev/fbkb.h"
 #include <fcntl.h>
 #include <linux/input.h>
 #else /* __linux__ */
@@ -490,8 +489,8 @@ static void memopanel_event_cb(lv_obj_t *obj, lv_event_t e) {
 /**
  * Custom keyboard read callback that handles special keys
  */
-static bool custom_fbkb_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
-	bool result = fbkb_read(indev_drv, data);
+static bool custom_kb_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
+	bool result = evdev_read(indev_drv, data);
 
 	if (data->state == LV_INDEV_STATE_PR) {
 		switch (data->key) {
@@ -524,7 +523,6 @@ static bool custom_fbkb_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
 }
 
 static void hal_init() {
-	fbdev_init(); // Linux frame buffer device init
 	evdev_init(); // Touch pointer device init
 	fbkb_init(); // Framebuffer keyboard device init
 
@@ -551,12 +549,11 @@ static void hal_init() {
 	lv_indev_drv_t kb_drv;
 	lv_indev_drv_init(&kb_drv);
 	kb_drv.type = LV_INDEV_TYPE_KEYPAD;
-	kb_drv.read_cb = custom_fbkb_read; // Use custom keyboard handler with R and P key support
+	kb_drv.read_cb = custom_kb_read; // Use custom keyboard handler
 	lv_indev_drv_register(&kb_drv);
 }
 
 static void hal_exit() {
-	fbkb_deinit();
 	fbdev_exit();
 }
 
