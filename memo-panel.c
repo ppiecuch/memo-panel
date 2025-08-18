@@ -492,17 +492,12 @@ static void memopanel_event_cb(lv_obj_t *obj, lv_event_t e) {
  */
 static bool custom_fbkb_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
 	bool result = fbkb_read(indev_drv, data);
-	
+
 	if (data->state == LV_INDEV_STATE_PR) {
-		switch(data->key) {
+		switch (data->key) {
 			case 'r':
 			case 'R':
 				printf("Refreshing UI...\n");
-				refresh_memo_panel();
-				if (time_task) lv_task_ready(time_task);
-				if (memo_task) lv_task_ready(memo_task);
-				if (weather_task) lv_task_ready(weather_task);
-				if (net_task) lv_task_ready(net_task);
 				lv_obj_invalidate(lv_scr_act());
 				data->key = 0;
 				break;
@@ -514,7 +509,7 @@ static bool custom_fbkb_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
 				break;
 		}
 	}
-	
+
 	return result;
 }
 
