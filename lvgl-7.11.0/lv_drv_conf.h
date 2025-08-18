@@ -422,6 +422,21 @@
 /*No settings*/
 #endif
 
+/*-----------------------------------------
+ *  Framebuffer keyboard for Linux console
+ *-----------------------------------------*/
+#ifdef __linux__
+# ifndef USE_FBKB
+#  define USE_FBKB         1
+# endif
+#else
+# define USE_FBKB          0
+#endif
+
+#if USE_FBKB
+/*No settings*/
+#endif
+
 #define CLOCKWORK_DEVTERM
 
 #endif  /*LV_DRV_CONF_H*/

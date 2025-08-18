@@ -6,6 +6,7 @@
 #ifdef __linux__
 #include "lvgl/lv_drivers/display/fbdev.h"
 #include "lvgl/lv_drivers/indev/evdev.h"
+#include "lvgl/lv_drivers/indev/fbkb.h"
 #include <fcntl.h>
 #include <linux/input.h>
 #else /* __linux__ */
@@ -486,40 +487,10 @@ static void memopanel_event_cb(lv_obj_t *obj, lv_event_t e) {
 
 #ifdef __linux__
 
-/* Get the currently being pressed key. 0 if no key is pressed */
-static uint32_t keypad_get_key(void) {
-	/*Your code comes here*/
-	return 0;
-}
-
-// Custom read keyboard input
-// https://github.com/vsfteam/vsf/blob/master/example/template/demo/lvgl_demo/lvgl_demo.c
-static bool keyboard_read(lv_indev_drv_t *drv, lv_indev_data_t *data) {
-	static bool __more_to_read = false;
-	static uint16_t __last_key = 0;
-
-	uint32_t act_key = keypad_get_key();
-	if (act_key != 0) {
-		data->state = LV_INDEV_STATE_PR;
-		if (__more_to_read) {
-			__last_key = keypad_get_key(); /*Get the last pressed or released key*/
-			__more_to_read = false;
-		} else {
-			printf("%s[INFO]%s Keyboard event: %d (%d)\n",
-					GREEN, NORMAL_COLOR, data->key, data->state);
-		}
-	} else {
-		data->state = LV_INDEV_STATE_REL;
-	}
-
-	data->key = __last_key;
-
-	return __more_to_read;
-}
-
 static void hal_init() {
 	fbdev_init(); // Linux frame buffer device init
 	evdev_init(); // Touch pointer device init
+	fbkb_init(); // Framebuffer keyboard device init
 
 	// Initialize `disp_buf` with the display buffer(s)
 	lv_disp_buf_init(&disp_buf, lvbuf1, NULL, LV_BUF_SIZE);
@@ -544,11 +515,12 @@ static void hal_init() {
 	lv_indev_drv_t kb_drv;
 	lv_indev_drv_init(&kb_drv);
 	kb_drv.type = LV_INDEV_TYPE_KEYPAD;
-	kb_drv.read_cb = evdev_read; // Use our custom keyboard handler
+	kb_drv.read_cb = fbkb_read; // Use framebuffer keyboard handler
 	lv_indev_drv_register(&kb_drv);
 }
 
 static void hal_exit() {
+	fbkb_deinit();
 	fbdev_exit();
 }
 
@@ -603,6 +575,7 @@ static void hal_init() {
 	indev_drv_2.read_cb = keyboard_read;
 	lv_indev_t *kb_indev = lv_indev_drv_register(&indev_drv_2);
 	lv_indev_set_group(kb_indev, g);
+
 	mousewheel_init();
 	static lv_indev_drv_t indev_drv_3;
 	lv_indev_drv_init(&indev_drv_3); /* Basic initialization */
