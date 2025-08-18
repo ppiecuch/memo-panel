@@ -63,6 +63,16 @@ static lv_indev_state_t key_state = LV_INDEV_STATE_REL;
  *   GLOBAL FUNCTIONS
  **********************/
 
+static void hide_cursor() {
+    printf("\033[?25l");
+    fflush(stdout);
+}
+
+static void show_cursor() {
+    printf("\033[?25h");
+    fflush(stdout);
+}
+
 /**
  * Initialize the framebuffer keyboard
  */
@@ -77,7 +87,10 @@ void fbkb_init(void)
     if (fbkb_set_raw_mode(FBKB_FL_KB_NONBLOCK) != FBKB_SUCCESS) {
         close(fbkb_state.fd);
         fbkb_state.fd = -1;
+        perror("Failed to set raw mode on TTY");
     }
+
+    hide_cursor();
 }
 
 /**
@@ -90,6 +103,8 @@ void fbkb_deinit(void)
         close(fbkb_state.fd);
         fbkb_state.fd = -1;
     }
+
+    show_cursor();
 }
 
 /**
@@ -152,7 +167,7 @@ static int fbkb_set_raw_mode(uint32_t flags)
     }
     
     t = fbkb_state.orig_termios;
-    t.c_iflag &= ~(BRKINT | INPCK | ISTRIP | IXON);
+    t.c_iflag &= ~(BRKINT | INPCK | ISTRIP | IXON | ICRNL | INLCR);
     t.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
     t.c_cc[VMIN] = 0;
     t.c_cc[VTIME] = 0;
@@ -182,7 +197,7 @@ static int fbkb_set_raw_mode(uint32_t flags)
         
         fbkb_state.nonblock = true;
     }
-    
+
     return FBKB_SUCCESS;
 }
 
