@@ -487,6 +487,37 @@ static void memopanel_event_cb(lv_obj_t *obj, lv_event_t e) {
 
 #ifdef __linux__
 
+/**
+ * Custom keyboard read callback that handles special keys
+ */
+static bool custom_fbkb_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
+	bool result = fbkb_read(indev_drv, data);
+	
+	if (data->state == LV_INDEV_STATE_PR) {
+		switch(data->key) {
+			case 'r':
+			case 'R':
+				printf("Refreshing UI...\n");
+				refresh_memo_panel();
+				if (time_task) lv_task_ready(time_task);
+				if (memo_task) lv_task_ready(memo_task);
+				if (weather_task) lv_task_ready(weather_task);
+				if (net_task) lv_task_ready(net_task);
+				lv_obj_invalidate(lv_scr_act());
+				data->key = 0;
+				break;
+			case 'p':
+			case 'P':
+				printf("Printing current memo entry...\n");
+				print_memo_panel();
+				data->key = 0;
+				break;
+		}
+	}
+	
+	return result;
+}
+
 static void hal_init() {
 	fbdev_init(); // Linux frame buffer device init
 	evdev_init(); // Touch pointer device init
@@ -515,7 +546,7 @@ static void hal_init() {
 	lv_indev_drv_t kb_drv;
 	lv_indev_drv_init(&kb_drv);
 	kb_drv.type = LV_INDEV_TYPE_KEYPAD;
-	kb_drv.read_cb = fbkb_read; // Use framebuffer keyboard handler
+	kb_drv.read_cb = custom_fbkb_read; // Use custom keyboard handler with R and P key support
 	lv_indev_drv_register(&kb_drv);
 }
 
