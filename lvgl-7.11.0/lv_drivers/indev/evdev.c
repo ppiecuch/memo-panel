@@ -82,7 +82,7 @@ void evdev_init(void)
  *         false: the device file doesn't exist current system
  */
 bool evdev_set_file(char* dev_name)
-{ 
+{
      if(evdev_fd != -1) {
         close(evdev_fd);
      }
@@ -165,45 +165,45 @@ bool evdev_read(lv_indev_drv_t * drv, lv_indev_data_t * data)
                 else if(in.value == 1)
                     evdev_button = LV_INDEV_STATE_PR;
             } else if(drv->type == LV_INDEV_TYPE_KEYPAD) {
-		data->state = (in.value) ? LV_INDEV_STATE_PR : LV_INDEV_STATE_REL;
-		switch(in.code) {
-			case KEY_BACKSPACE:
-				data->key = LV_KEY_BACKSPACE;
-				break;
-			case KEY_ENTER:
-				data->key = LV_KEY_ENTER;
-				break;
-			case KEY_UP:
-				data->key = LV_KEY_UP;
-				break;
-			case KEY_LEFT:
-				data->key = LV_KEY_PREV;
-				break;
-			case KEY_RIGHT:
-				data->key = LV_KEY_NEXT;
-				break;
-			case KEY_DOWN:
-				data->key = LV_KEY_DOWN;
-				break;
-			default:
-				data->key = (in.code < 127) ? in.code : 0;
-				break;
-		}
-		evdev_key_val = data->key;
-		evdev_button = data->state;
-		return false;
-	    }
+                data->state = (in.value) ? LV_INDEV_STATE_PR : LV_INDEV_STATE_REL;
+                switch(in.code) {
+         			case KEY_BACKSPACE:
+                        data->key = LV_KEY_BACKSPACE;
+                       	break;
+         			case KEY_ENTER:
+        				data->key = LV_KEY_ENTER;
+        				break;
+         			case KEY_UP:
+        				data->key = LV_KEY_UP;
+        				break;
+         			case KEY_LEFT:
+        				data->key = LV_KEY_PREV;
+        				break;
+         			case KEY_RIGHT:
+        				data->key = LV_KEY_NEXT;
+        				break;
+         			case KEY_DOWN:
+        				data->key = LV_KEY_DOWN;
+        				break;
+         			default:
+        				data->key = (in.code < 127) ? in.code : 0;
+        				break;
+          		}
+                evdev_key_val = data->key;
+                evdev_button = data->state;
+            }
         }
     }
 
     if(drv->type == LV_INDEV_TYPE_KEYPAD) {
         /* No data retrieved */
         data->key = evdev_key_val;
-	data->state = evdev_button;
-	return false;
+        data->state = evdev_button;
+        return false;
     }
     if(drv->type != LV_INDEV_TYPE_POINTER)
         return false;
+
     /*Store the collected data*/
 
 #if EVDEV_CALIBRATE

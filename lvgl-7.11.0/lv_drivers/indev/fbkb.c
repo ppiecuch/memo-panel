@@ -21,7 +21,7 @@
 /*********************
  *      DEFINES
  *********************/
-#define FBKB_TTY_PATH "/dev/tty0"
+#define FBKB_TTY_PATH "/dev/tty1"
 
 /**********************
  *      TYPEDEFS
@@ -83,7 +83,7 @@ void fbkb_init(void)
         perror("Failed to open TTY");
         return;
     }
-    
+
     if (fbkb_set_raw_mode(FBKB_FL_KB_NONBLOCK) != FBKB_SUCCESS) {
         close(fbkb_state.fd);
         fbkb_state.fd = -1;
@@ -96,7 +96,7 @@ void fbkb_init(void)
 /**
  * Deinitialize the framebuffer keyboard
  */
-void fbkb_deinit(void)
+void fbkb_exit(void)
 {
     if (fbkb_state.fd >= 0) {
         fbkb_restore_mode();
@@ -116,23 +116,23 @@ void fbkb_deinit(void)
 bool fbkb_read(lv_indev_drv_t * indev_drv, lv_indev_data_t * data)
 {
     (void)indev_drv;
-    
+
     if (fbkb_state.fd < 0) {
         return false;
     }
-    
+
     uint32_t key = fbkb_read_key();
-    
+
     if (key != 0) {
         last_key = fbkb_convert_to_lv_key(key);
         key_state = LV_INDEV_STATE_PR;
     } else if (key_state == LV_INDEV_STATE_PR) {
         key_state = LV_INDEV_STATE_REL;
     }
-    
+
     data->key = last_key;
     data->state = key_state;
-    
+
     return false;
 }
 
@@ -147,54 +147,54 @@ static int fbkb_set_raw_mode(uint32_t flags)
 {
     struct termios t;
     int rc;
-    
+
     if (fbkb_state.raw_mode) {
         return FBKB_ERR_KB_WRONG_MODE;
     }
-    
+
     if (ioctl(fbkb_state.fd, KDGKBMODE, &fbkb_state.saved_kdmode) != 0) {
         return FBKB_ERR_KB_MODE_GET_FAILED;
     }
-    
+
     if (fbkb_state.saved_kdmode != K_XLATE) {
         if (ioctl(fbkb_state.fd, KDSKBMODE, K_XLATE) != 0) {
             return FBKB_ERR_KB_MODE_SET_FAILED;
         }
     }
-    
+
     if (tcgetattr(fbkb_state.fd, &fbkb_state.orig_termios) != 0) {
         return FBKB_ERR_KB_MODE_GET_FAILED;
     }
-    
+
     t = fbkb_state.orig_termios;
     t.c_iflag &= ~(BRKINT | INPCK | ISTRIP | IXON | ICRNL | INLCR);
     t.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
     t.c_cc[VMIN] = 0;
     t.c_cc[VTIME] = 0;
-    
+
     if (tcsetattr(fbkb_state.fd, TCSAFLUSH, &t) != 0) {
         return FBKB_ERR_KB_MODE_SET_FAILED;
     }
-    
+
     fbkb_state.raw_mode = true;
-    
+
     if (flags & FBKB_FL_KB_NONBLOCK) {
         rc = fcntl(fbkb_state.fd, F_GETFL, 0);
-        
+
         if (rc < 0) {
             fbkb_restore_mode();
             return FBKB_ERR_KB_MODE_GET_FAILED;
         }
-        
+
         fbkb_state.saved_fcntl_flags = rc;
-        
+
         rc = fcntl(fbkb_state.fd, F_SETFL, fbkb_state.saved_fcntl_flags | O_NONBLOCK);
-        
+
         if (rc < 0) {
             fbkb_restore_mode();
             return FBKB_ERR_KB_MODE_SET_FAILED;
         }
-        
+
         fbkb_state.nonblock = true;
     }
 
@@ -210,17 +210,17 @@ static int fbkb_restore_mode(void)
         fcntl(fbkb_state.fd, F_SETFL, fbkb_state.saved_fcntl_flags);
         fbkb_state.nonblock = false;
     }
-    
+
     if (!fbkb_state.raw_mode) {
         return FBKB_ERR_KB_WRONG_MODE;
     }
-    
+
     ioctl(fbkb_state.fd, KDSKBMODE, fbkb_state.saved_kdmode);
-    
+
     if (tcsetattr(fbkb_state.fd, TCSAFLUSH, &fbkb_state.orig_termios) != 0) {
         return FBKB_ERR_KB_MODE_SET_FAILED;
     }
-    
+
     fbkb_state.raw_mode = false;
     return FBKB_SUCCESS;
 }
@@ -235,13 +235,13 @@ static uint32_t fbkb_read_key(void)
         STATE_ESC,
         STATE_BRACKET
     } state = STATE_INITIAL;
-    
+
     static char seq[8];
     static int seq_len = 0;
-    
+
     char c;
     int rc = read(fbkb_state.fd, &c, 1);
-    
+
     if (rc <= 0) {
         if (state != STATE_INITIAL && errno == EAGAIN) {
             return 0;
@@ -250,7 +250,7 @@ static uint32_t fbkb_read_key(void)
         seq_len = 0;
         return 0;
     }
-    
+
     switch (state) {
         case STATE_INITIAL:
             if (c == '\033') {
@@ -260,7 +260,7 @@ static uint32_t fbkb_read_key(void)
                 return 0;
             }
             return (uint32_t)c;
-            
+
         case STATE_ESC:
             if (c == '[') {
                 state = STATE_BRACKET;
@@ -270,15 +270,15 @@ static uint32_t fbkb_read_key(void)
             state = STATE_INITIAL;
             seq_len = 0;
             return 0;
-            
+
         case STATE_BRACKET:
             seq[seq_len++] = c;
-            
+
             if ((c >= 0x40 && c <= 0x7E) || seq_len >= 7) {
                 seq[seq_len] = '\0';
                 state = STATE_INITIAL;
                 seq_len = 0;
-                
+
                 if (strcmp(seq, "\033[A") == 0) return 0x80000001;
                 if (strcmp(seq, "\033[B") == 0) return 0x80000002;
                 if (strcmp(seq, "\033[C") == 0) return 0x80000003;
@@ -290,7 +290,7 @@ static uint32_t fbkb_read_key(void)
             }
             return 0;
     }
-    
+
     return 0;
 }
 
@@ -315,7 +315,7 @@ static uint32_t fbkb_convert_to_lv_key(uint32_t key)
                 return key;
         }
     }
-    
+
     switch(key) {
         case 0x80000001:
             return LV_KEY_UP;

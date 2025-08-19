@@ -75,7 +75,7 @@ void fbkb_init(void);
 /**
  * Deinitialize the framebuffer keyboard
  */
-void fbkb_deinit(void);
+void fbkb_exit(void);
 
 /**
  * Read keyboard input for LVGL

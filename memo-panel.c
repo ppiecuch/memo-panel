@@ -5,6 +5,7 @@
 #include "lvgl/lvgl.h"
 #ifdef __linux__
 #include "lvgl/lv_drivers/display/fbdev.h"
+#include "lvgl/lv_drivers/indev/fbkb.h"
 #include "lvgl/lv_drivers/indev/evdev.h"
 #include <fcntl.h>
 #include <linux/input.h>
@@ -490,8 +491,7 @@ static void memopanel_event_cb(lv_obj_t *obj, lv_event_t e) {
  * Custom keyboard read callback that handles special keys
  */
 static bool custom_kb_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
-	bool result = evdev_read(indev_drv, data);
-
+	bool result = fbkb_read(indev_drv, data);
 	if (data->state == LV_INDEV_STATE_PR) {
 		switch (data->key) {
 			case 'r':
@@ -523,7 +523,8 @@ static bool custom_kb_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
 }
 
 static void hal_init() {
-	evdev_init(); // Touch pointer device init
+    evdev_init(); // Touch pointer device init
+    fbkb_init(); // Touch pointer device init
 	fbdev_init(); // Framebuffer keyboard device init
 
 	// Initialize `disp_buf` with the display buffer(s)
@@ -554,6 +555,7 @@ static void hal_init() {
 }
 
 static void hal_exit() {
+    fbkb_exit();
 	fbdev_exit();
 }
 
