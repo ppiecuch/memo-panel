@@ -524,7 +524,7 @@ static bool custom_kb_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
 
 static void hal_init() {
 	evdev_init(); // Touch pointer device init
-	fbkb_init(); // Framebuffer keyboard device init
+	fbdev_init(); // Framebuffer keyboard device init
 
 	// Initialize `disp_buf` with the display buffer(s)
 	lv_disp_buf_init(&disp_buf, lvbuf1, NULL, LV_BUF_SIZE);
