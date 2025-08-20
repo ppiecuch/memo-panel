@@ -487,13 +487,7 @@ static void memopanel_event_cb(lv_obj_t *obj, lv_event_t e) {
 
 #ifdef __linux__
 
-static bool custom_pointer_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
-	bool result = evdev_read(indev_drv, data);
-}
-
-/**
- * Custom keyboard read callback that handles special keys
- */
+/* Custom keyboard read callback that handles special keys */
 static bool custom_kb_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
 	bool result = fbkb_read(indev_drv, data);
 	if (data->state == LV_INDEV_STATE_PR) {
@@ -527,34 +521,41 @@ static bool custom_kb_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
 }
 
 static void hal_init() {
-	evdev_init(); // Touch pointer device init
-	fbkb_init(); // Touch pointer device init
-	fbdev_init(); // Framebuffer keyboard device init
+	evdev_init(); /* Touch pointer device init */
+	fbkb_init(); /* Touch pointer device init */
+	fbdev_init(); /* Framebuffer keyboard device init */
 
-	// Initialize `disp_buf` with the display buffer(s)
+	/* Initialize `disp_buf` with the display buffer(s) */
 	lv_disp_buf_init(&disp_buf, lvbuf1, NULL, LV_BUF_SIZE);
 
-	// Initialize and register a display driver
+	/* Initialize and register a display driver */
 	lv_disp_drv_t disp_drv;
 	lv_disp_drv_init(&disp_drv);
-	disp_drv.flush_cb = fbdev_flush; // flushes the internal graphical buffer to the frame buffer
-	disp_drv.buffer = &disp_buf; // set teh display buffere reference in the driver
+	disp_drv.flush_cb = fbdev_flush; /* flushes the internal graphical buffer to the frame buffer */
+	disp_drv.buffer = &disp_buf; /* set teh display buffere reference in the driver */
 	disp_drv.rotated = LV_DISP_ROT_NONE;
 	disp_drv.sw_rotate = 0;
 	lv_disp_drv_register(&disp_drv);
 
-	// Initialize and register a pointer device driver
+	/* Initialize and register a pointer device driver */
 	lv_indev_drv_t indev_drv;
 	lv_indev_drv_init(&indev_drv);
 	indev_drv.type = LV_INDEV_TYPE_POINTER;
-	indev_drv.read_cb = custom_pointer_read; // Use custom handler
-	lv_indev_drv_register(&indev_drv);
+	indev_drv.read_cb = evdev_read; /* Default handler */
+	lv_indev_t *pointer_indev = lv_indev_drv_register(&indev_drv);
 
-	// Initialize and register a keyboard device driver
+	/* Set a cursor for the mouse */
+	LV_IMG_DECLARE(mouse_cursor_icon); /* Declare the image file. */
+	lv_obj_t *cursor_obj = lv_img_create(lv_scr_act(), NULL); /* Create an image object for the cursor */
+	lv_img_set_src(cursor_obj, &mouse_cursor_icon); /* Set the image source */
+	lv_indev_set_cursor(pointer_indev, cursor_obj); /* Connect the image  object to the driver */
+	/* lv_obj_add_flag(cursor_obj, LV_OBJ_FLAG_HIDDEN); */
+
+	/* Initialize and register a keyboard device driver */
 	lv_indev_drv_t kb_drv;
 	lv_indev_drv_init(&kb_drv);
 	kb_drv.type = LV_INDEV_TYPE_KEYPAD;
-	kb_drv.read_cb = custom_kb_read; // Use custom keyboard handler
+	kb_drv.read_cb = custom_kb_read; /* Use custom keyboard handler */
 	lv_indev_drv_register(&kb_drv);
 }
 
@@ -576,7 +577,7 @@ static int tick_thread(void *data) {
 }
 
 static void hal_init() {
-	/* Use the 'monitor' driver which creates window on PC's monitor to simulate a display*/
+	/* Use the 'monitor' driver which creates window on PC's monitor to simulate a display */
 	monitor_init();
 	/* Tick init.
 	 * You have to call 'lv_tick_inc()' in periodically to inform LittelvGL about
@@ -589,8 +590,8 @@ static void hal_init() {
 	/*Create a display*/
 	lv_disp_drv_t disp_drv;
 	lv_disp_drv_init(&disp_drv);
-	disp_drv.flush_cb = monitor_flush; // flushes the internal graphical buffer to the frame buffer
-	disp_drv.buffer = &disp_buf; // set teh display buffere reference in the driver
+	disp_drv.flush_cb = monitor_flush; //*flushes the internal graphical buffer to the frame buffer */
+	disp_drv.buffer = &disp_buf; /* set teh display buffere reference in the driver */
 	lv_disp_drv_register(&disp_drv);
 	disp_drv.antialiasing = 1;
 
@@ -600,18 +601,18 @@ static void hal_init() {
 	 * Use the 'mouse' driver which reads the PC's mouse*/
 	mouse_init();
 	static lv_indev_drv_t indev_drv_1;
-	lv_indev_drv_init(&indev_drv_1); /*Basic initialization*/
+	lv_indev_drv_init(&indev_drv_1); /* Basic initialization */
 	indev_drv_1.type = LV_INDEV_TYPE_POINTER;
 
-	/*This function will be called periodically (by the library) to get the mouse position and state*/
+	/* This function will be called periodically (by the library) to get the mouse position and state */
 	indev_drv_1.read_cb = mouse_read;
 	lv_indev_t *mouse_indev = lv_indev_drv_register(&indev_drv_1);
 
 	/*Set a cursor for the mouse*/
-	LV_IMG_DECLARE(mouse_cursor_icon); /*Declare the image file.*/
+	LV_IMG_DECLARE(mouse_cursor_icon); /* Declare the image file. */
 	lv_obj_t *cursor_obj = lv_img_create(lv_scr_act(), NULL); /*Create an image object for the cursor */
-	lv_img_set_src(cursor_obj, &mouse_cursor_icon); /*Set the image source*/
-	lv_indev_set_cursor(mouse_indev, cursor_obj); /*Connect the image  object to the driver*/
+	lv_img_set_src(cursor_obj, &mouse_cursor_icon); /* Set the image source */
+	lv_indev_set_cursor(mouse_indev, cursor_obj); /* Connect the image  object to the driver */
 
 	keyboard_init();
 	static lv_indev_drv_t indev_drv_2;
