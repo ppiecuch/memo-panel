@@ -5,8 +5,8 @@
 #include "lvgl/lvgl.h"
 #ifdef __linux__
 #include "lvgl/lv_drivers/display/fbdev.h"
-#include "lvgl/lv_drivers/indev/fbkb.h"
 #include "lvgl/lv_drivers/indev/evdev.h"
+#include "lvgl/lv_drivers/indev/fbkb.h"
 #include <fcntl.h>
 #include <linux/input.h>
 #else /* __linux__ */
@@ -487,6 +487,10 @@ static void memopanel_event_cb(lv_obj_t *obj, lv_event_t e) {
 
 #ifdef __linux__
 
+static bool custom_pointer_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
+	bool result = evdev_read(indev_drv, data);
+}
+
 /**
  * Custom keyboard read callback that handles special keys
  */
@@ -523,8 +527,8 @@ static bool custom_kb_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
 }
 
 static void hal_init() {
-    evdev_init(); // Touch pointer device init
-    fbkb_init(); // Touch pointer device init
+	evdev_init(); // Touch pointer device init
+	fbkb_init(); // Touch pointer device init
 	fbdev_init(); // Framebuffer keyboard device init
 
 	// Initialize `disp_buf` with the display buffer(s)
@@ -543,7 +547,7 @@ static void hal_init() {
 	lv_indev_drv_t indev_drv;
 	lv_indev_drv_init(&indev_drv);
 	indev_drv.type = LV_INDEV_TYPE_POINTER;
-	indev_drv.read_cb = evdev_read; // defined in lv_drivers/indev/evdev.h
+	indev_drv.read_cb = custom_pointer_read; // Use custom handler
 	lv_indev_drv_register(&indev_drv);
 
 	// Initialize and register a keyboard device driver
@@ -555,7 +559,7 @@ static void hal_init() {
 }
 
 static void hal_exit() {
-    fbkb_exit();
+	fbkb_exit();
 	fbdev_exit();
 }
 
@@ -601,7 +605,13 @@ static void hal_init() {
 
 	/*This function will be called periodically (by the library) to get the mouse position and state*/
 	indev_drv_1.read_cb = mouse_read;
-	lv_indev_drv_register(&indev_drv_1);
+	lv_indev_t *mouse_indev = lv_indev_drv_register(&indev_drv_1);
+
+	/*Set a cursor for the mouse*/
+	LV_IMG_DECLARE(mouse_cursor_icon); /*Declare the image file.*/
+	lv_obj_t *cursor_obj = lv_img_create(lv_scr_act(), NULL); /*Create an image object for the cursor */
+	lv_img_set_src(cursor_obj, &mouse_cursor_icon); /*Set the image source*/
+	lv_indev_set_cursor(mouse_indev, cursor_obj); /*Connect the image  object to the driver*/
 
 	keyboard_init();
 	static lv_indev_drv_t indev_drv_2;
