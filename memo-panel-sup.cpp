@@ -16,6 +16,7 @@
 
 #include <condition_variable>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <numeric>
 #include <sstream>
@@ -28,6 +29,92 @@
 #include "deps/par_easycurl.h"
 
 #include "memo-panel-sup.h"
+
+
+#ifdef __linux__
+
+#include <sys/ioctl.h>
+#include <sys/statfs.h>
+#include <sys/vt.h>
+
+/// terminal management
+
+#define tty_device() (strncmp(ttyname(STDOUT_FILENO), "/dev/tty", 8) == 0)
+#define pts_device() (strncmp(ttyname(STDOUT_FILENO), "/dev/pts/", 9) == 0)
+
+bool tty_is_devpts(const char *tty) {
+    bool retval = false;
+    struct statfs sfs;
+
+#ifndef DEVPTS_SUPER_MAGIC
+# define DEVPTS_SUPER_MAGIC 0x1cd1
+#endif
+
+    if (statfs(tty, &sfs) == 0) {
+        if (sfs.f_type == DEVPTS_SUPER_MAGIC)
+            retval = true;
+    }
+    return retval;
+}
+
+bool is_linux_console() {
+    // This is the same function used to get the Shift/Ctrl/Alt modifiers
+    // on the console. It only succeeds if a console file descriptor is used.
+    for (int fd : std::vector<int>{STDIN_FILENO, STDOUT_FILENO}) {
+        char subcode = 6;
+        if (ioctl(fd, TIOCLINUX, &subcode) != -1)
+            return true;
+    }
+    return false;
+}
+
+int is_console(int fd) {
+    struct vt_mode  vt;
+    int ret = ioctl (fd, VT_GETMODE, &vt);
+    return !ret;
+}
+
+/* One of these has to work */
+static const char * CONSOLE[] =   {
+  "/dev/console",
+  "/dev/tty0",
+  "/dev/vt00",
+  "/dev/systty",
+  0
+};
+
+static int open_console (void)  {
+  int console = -1;
+  int pos;
+  for (pos = 0; CONSOLE[pos]; pos++)  {
+    errno = 0;
+    if ((console = open (CONSOLE[pos], O_WRONLY)) >= 0)  {
+      return console;
+    }
+  }
+  return -1;
+}
+
+void vt_activate(int con_num) {
+    struct file_h {
+        int fh = -1;
+        file_h(int fh): fh(fh) {}
+        ~file_h() { if (fh >= 0) close(fh); }
+        operator const int() const { return fh; }
+    } console_fd(open_console());
+    if (console_fd == -1) {
+        perror("Failed to open console");
+        return;
+    }
+
+    ioctl(console_fd, VT_ACTIVATE, con_num);
+}
+
+static bool is_con = is_console(STDIN_FILENO), is_safe_output = isatty(STDOUT_FILENO) && tty_is_devpts(ttyname(STDOUT_FILENO));
+
+#else
+# define is_safe_output false
+#endif // __linux__
 
 /// file resources management
 
@@ -72,7 +159,7 @@ const char *fgets(char *buf, size_t size, FILEW &f) { return f.fgets(buf, size);
 size_t fread(char *buf, size_t size, size_t n, FILEW &f) { return f.fread(buf, size, n); }
 int fflush(FILEW &f) { return f.flush(); }
 
-static bool verbose = false;
+static bool verbose = is_safe_output;
 static FILEW flog("echo.log", "w");
 
 #define LOG(fmt, ...)                                          \
@@ -796,7 +883,7 @@ private:
 			return false;
 		unsigned char buffer[3] = { 0, 0, 0 };
 		fread(buffer, 1, 3, file);
-		return (buffer[0] == 'I' && buffer[1] == 'D' && buffer[2] == '3') || 
+		return (buffer[0] == 'I' && buffer[1] == 'D' && buffer[2] == '3') ||
 		       (buffer[0] == 0xFF && (buffer[1] & 0xE0) == 0xE0);
 	}
 
@@ -808,7 +895,7 @@ private:
 		std::string sanitized = trunc_wstring(simplifieDiacritics(wide_text));
 		// Replace any problematic characters for filesystem
 		for (char &c : sanitized) {
-			if (c == '/' || c == '\\' || c == ':' || c == '*' || 
+			if (c == '/' || c == '\\' || c == ':' || c == '*' ||
 			    c == '?' || c == '"' || c == '<' || c == '>' || c == '|') {
 				c = '_';
 			}
@@ -876,7 +963,7 @@ private:
 public:
 	bool speak_text_sync(const std::string &text, const std::string &language, float speed) {
 		static int call_count = 0;
-		
+
 		if (text.empty()) {
 			LOG("TTS: No text to speak\n");
 			return false;
@@ -884,7 +971,7 @@ public:
 
 		// Ensure cache directory exists
 		ensure_cache_dir();
-		
+
 		// Periodically clean up old cache files (every 100 calls)
 		if (++call_count % 100 == 0) {
 			cleanup_old_cache_files(7);  // Clean files older than 7 days

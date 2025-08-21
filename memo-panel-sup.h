@@ -2,10 +2,42 @@
 #define _memo_panel_sup_h_
 
 #include <stdbool.h>
+#include <stdio.h>
+
+// Ascii commands
+
+#define ASCII_DELIMITER '\t'
+
+static inline void puts_no_eol(const char *s) {
+	while (*s)
+		putchar(*s++);
+	fflush(stdout);
+}
+
+// https://invisible-island.net/xterm/ctlseqs/ctlseqs.html
+
+#define console_clear() puts_no_eol("\033[1;1H\033[2J")
+#define console_alt_enter() puts_no_eol("\033[?1049h")
+#define console_alt_exit() puts_no_eol("\033[?1049l")
+
+#define console_save() puts_no_eol("\033[?47h")
+#define console_restore() puts_no_eol("\033[?47l")
+
+#define cursor_reset() puts_no_eol("\033[0;0H")
+#define cursor_hide() puts_no_eol("\033[?25l")
+#define cursor_show() puts_no_eol("\033[?25h")
+#define cursor_home() puts_no_eol("\033[H")
+#define cursor_save() puts_no_eol("\0337")
+#define cursor_restore() puts_no_eol("\0338")
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+bool tty_is_devpts(const char *tty);
+bool is_linux_console();
+int is_console (int fd);
+void vt_activate(int con_num);
 
 void init_memo_panel();
 void refresh_memo_panel();
@@ -42,7 +74,7 @@ extern long cron_next_schedule;
 
 #define WORDSURL "https://raw.githubusercontent.com/ppiecuch/shared-assets/master/words.txt"
 #define LOCALCACHE "/tmp/words-memo.txt"
-#define APPVERSION "0.9.10"
+#define APPVERSION "0.9.12"
 
 #ifdef __cplusplus
 }

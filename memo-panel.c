@@ -7,8 +7,8 @@
 #include "lvgl/lv_drivers/display/fbdev.h"
 #include "lvgl/lv_drivers/indev/evdev.h"
 #include "lvgl/lv_drivers/indev/fbkb.h"
-#include <fcntl.h>
 #include <linux/input.h>
+#include <sys/ioctl.h>
 #else /* __linux__ */
 #if LVGL == 7
 #include "lvgl/lv_drivers/display/monitor.h"
@@ -521,6 +521,8 @@ static bool custom_kb_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
 }
 
 static void hal_init() {
+    vt_activate(3);
+
 	evdev_init(); /* Touch pointer device init */
 	fbkb_init(); /* Touch pointer device init */
 	fbdev_init(); /* Framebuffer keyboard device init */
@@ -562,6 +564,7 @@ static void hal_init() {
 static void hal_exit() {
 	fbkb_exit();
 	fbdev_exit();
+	vt_activate(0);
 }
 
 #else /* __linux__ */
@@ -650,6 +653,8 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
+	console_alt_enter();
+
 	lv_init(); // LVGL init
 	lv_png_init(); // png file support
 
@@ -669,5 +674,7 @@ int main(int argc, char *argv[]) {
 
 	finish_memo_panel();
 	hal_exit();
+
+	console_alt_exit();
 	return 0;
 }
