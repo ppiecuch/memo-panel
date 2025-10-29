@@ -2,3 +2,6 @@
 obj
 *.o
 *.obj
+.claude*
+CLAUDE.md
+*.ini

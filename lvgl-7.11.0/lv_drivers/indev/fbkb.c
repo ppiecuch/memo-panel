@@ -21,7 +21,7 @@
 /*********************
  *      DEFINES
  *********************/
-#define FBKB_TTY_PATH "/dev/tty1"
+#define FBKB_TTY_PATH "/dev/tty2"
 
 /**********************
  *      TYPEDEFS

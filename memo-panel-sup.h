@@ -54,6 +54,8 @@ void speak_text(const char *text);
 void set_tts_language(const char *language);
 void set_tts_speed(float speed);
 void set_tts_cache_dir(const char *cache_dir);
+void set_tts_enabled(bool enabled);
+void set_tts_auto_speak_interval(int seconds);
 bool is_tts_available();
 void stop_tts();
 

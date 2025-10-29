@@ -7,8 +7,6 @@
 #include "lvgl/lv_drivers/display/fbdev.h"
 #include "lvgl/lv_drivers/indev/evdev.h"
 #include "lvgl/lv_drivers/indev/fbkb.h"
-#include <linux/input.h>
-#include <sys/ioctl.h>
 #else /* __linux__ */
 #if LVGL == 7
 #include "lvgl/lv_drivers/display/monitor.h"
@@ -31,6 +29,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include "memo-panel-sup.h"
 
@@ -56,6 +55,13 @@ static char *openweather_apikey = NULL;
 static char *openweather_label = NULL;
 static double openweather_coord[2] = { 0, 0 };
 
+// TTS config options
+static cfg_bool_t tts_enabled = cfg_true;
+static long tts_auto_speak_interval = 600;
+static char *tts_language = NULL;
+static double tts_speed = 1.0;
+static char *tts_cache_dir = NULL;
+
 // display buffer size - not sure if this size is really needed
 #define LV_BUF_SIZE (LV_HOR_RES_MAX) * (LV_VER_RES_MAX) // 1280x480
 
@@ -71,7 +77,8 @@ static const char *MONTH[] = { "January", "February", "March", "April", "May", "
 
 static lv_style_t style_extra1, style_extra2, style_large, style_clock, style_memo;
 static lv_task_t *time_task, *net_task, *memo_task, *weather_task;
-static const lv_font_t *font_extra1 = &lv_font_montserrat_72, *font_extra2 = &lv_font_montserrat_36, *font_large = &lv_font_montserrat_24, *font_normal = &lv_font_montserrat_16;
+static const lv_font_t *font_extra1 = &lv_font_montserrat_72, *font_extra2 = &lv_font_montserrat_36, *font_large = &lv_font_montserrat_24;
+// static const lv_font_t *font_normal = &lv_font_montserrat_16;
 
 static lv_obj_t *clock_label[8];
 static lv_obj_t *date_label, *weather_label, *memo1_label, *memo2_label;
@@ -80,6 +87,13 @@ static lv_obj_t *led1, *led2;
 static lv_obj_t *controls_panel, *memo_panel;
 
 static char weatherString[64] = { 0 };
+
+static volatile bool should_exit = false;
+
+static void signal_handler(int signum) {
+	printf("\n%s[INFO]%s Received signal %d, cleaning up...\n", GREEN, NORMAL_COLOR, signum);
+	should_exit = true;
+}
 
 static void memopanel_event_cb(lv_obj_t *_kb, lv_event_t e);
 
@@ -372,6 +386,11 @@ static void panel_init(char *prog_name, lv_obj_t *root) {
 		CFG_SIMPLE_STR("openweather_apikey", &openweather_apikey),
 		CFG_SIMPLE_STR("openweather_label", &openweather_label),
 		CFG_FLOAT_LIST("openweather_coord", "{0, 0}", CFGF_NONE),
+		CFG_SIMPLE_BOOL("tts_enabled", &tts_enabled),
+		CFG_SIMPLE_INT("tts_auto_speak_interval", &tts_auto_speak_interval),
+		CFG_SIMPLE_STR("tts_language", &tts_language),
+		CFG_SIMPLE_FLOAT("tts_speed", &tts_speed),
+		CFG_SIMPLE_STR("tts_cache_dir", &tts_cache_dir),
 		CFG_END()
 	};
 	cfg_t *cfg = cfg_init(opts, 0);
@@ -380,6 +399,19 @@ static void panel_init(char *prog_name, lv_obj_t *root) {
 	openweather_coord[0] = cfg_getnfloat(cfg, "openweather_coord", 0);
 	openweather_coord[1] = cfg_getnfloat(cfg, "openweather_coord", 1);
 	cfg_free(cfg);
+
+	// Apply TTS configuration
+	set_tts_enabled(tts_enabled);
+	set_tts_auto_speak_interval(tts_auto_speak_interval);
+	if (tts_language && strlen(tts_language) > 0) {
+		set_tts_language(tts_language);
+	}
+	if (tts_speed > 0.1 && tts_speed < 3.0) {
+		set_tts_speed(tts_speed);
+	}
+	if (tts_cache_dir && strlen(tts_cache_dir) > 0) {
+		set_tts_cache_dir(tts_cache_dir);
+	}
 
 	// Memo panel
 
@@ -500,7 +532,7 @@ static bool custom_kb_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
 				break;
 			case 'p':
 			case 'P':
-				printf("%s[INFO]%sPrinting current memo entry...\n", GREEN, NORMAL_COLOR);
+				printf("%s[INFO]%s Printing current memo entry...\n", GREEN, NORMAL_COLOR);
 				print_memo_panel();
 				data->key = 0;
 				break;
@@ -521,17 +553,17 @@ static bool custom_kb_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
 }
 
 static void hal_init() {
-    vt_activate(3);
+    vt_activate(2);
 
-	evdev_init(); /* Touch pointer device init */
-	fbkb_init(); /* Touch pointer device init */
-	fbdev_init(); /* Framebuffer keyboard device init */
+	evdev_init(); /* Initialize evdev mouse/touchscreen input */
+	fbkb_init(); /* Framebuffer keyboard device init */
+	fbdev_init(); /* Framebuffer display device init */
 
 	/* Initialize `disp_buf` with the display buffer(s) */
 	lv_disp_buf_init(&disp_buf, lvbuf1, NULL, LV_BUF_SIZE);
 
 	/* Initialize and register a display driver */
-	lv_disp_drv_t disp_drv;
+	static lv_disp_drv_t disp_drv;  /* MUST be static to persist after function returns */
 	lv_disp_drv_init(&disp_drv);
 	disp_drv.flush_cb = fbdev_flush; /* flushes the internal graphical buffer to the frame buffer */
 	disp_drv.buffer = &disp_buf; /* set teh display buffere reference in the driver */
@@ -539,22 +571,24 @@ static void hal_init() {
 	disp_drv.sw_rotate = 0;
 	lv_disp_drv_register(&disp_drv);
 
-	/* Initialize and register a pointer device driver */
-	lv_indev_drv_t indev_drv;
+	/* Initialize and register a pointer device driver using evdev */
+	static lv_indev_drv_t indev_drv;  /* MUST be static to persist after function returns */
 	lv_indev_drv_init(&indev_drv);
 	indev_drv.type = LV_INDEV_TYPE_POINTER;
-	indev_drv.read_cb = evdev_read; /* Default handler */
+	indev_drv.read_cb = evdev_read; /* Use LVGL's built-in evdev driver */
 	lv_indev_t *pointer_indev = lv_indev_drv_register(&indev_drv);
 
 	/* Set a cursor for the mouse */
-	LV_IMG_DECLARE(mouse_cursor_icon); /* Declare the image file. */
-	lv_obj_t *cursor_obj = lv_img_create(lv_scr_act(), NULL); /* Create an image object for the cursor */
-	lv_img_set_src(cursor_obj, &mouse_cursor_icon); /* Set the image source */
-	lv_indev_set_cursor(pointer_indev, cursor_obj); /* Connect the image  object to the driver */
-	/* lv_obj_add_flag(cursor_obj, LV_OBJ_FLAG_HIDDEN); */
+	LV_IMG_DECLARE(mouse_cursor_icon);
+	lv_obj_t *cursor_obj = lv_img_create(lv_scr_act(), NULL);
+	lv_img_set_src(cursor_obj, &mouse_cursor_icon);
+	lv_indev_set_cursor(pointer_indev, cursor_obj);
+
+	printf("%s[INFO]%s Evdev mouse driver initialized (device: /dev/input/event3)\n",
+	       GREEN, NORMAL_COLOR);
 
 	/* Initialize and register a keyboard device driver */
-	lv_indev_drv_t kb_drv;
+	static lv_indev_drv_t kb_drv;  /* MUST be static to persist after function returns */
 	lv_indev_drv_init(&kb_drv);
 	kb_drv.type = LV_INDEV_TYPE_KEYPAD;
 	kb_drv.read_cb = custom_kb_read; /* Use custom keyboard handler */
@@ -653,6 +687,10 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
+	// Install signal handlers for clean shutdown
+	signal(SIGINT, signal_handler);
+	signal(SIGTERM, signal_handler);
+
 	console_alt_enter();
 
 	lv_init(); // LVGL init
@@ -666,12 +704,14 @@ int main(int argc, char *argv[]) {
 	panel_init(argv[0], NULL);
 
 	// Handle LVGL tasks (tickless mode)
-	while (1) {
+	printf("%s[INFO]%s Entering main LVGL loop...\n", GREEN, NORMAL_COLOR);
+	while (!should_exit) {
 		lv_tick_inc(5);
 		lv_task_handler();
 		usleep(5000);
 	}
 
+	printf("%s[INFO]%s Exiting main loop, cleaning up...\n", GREEN, NORMAL_COLOR);
 	finish_memo_panel();
 	hal_exit();
 

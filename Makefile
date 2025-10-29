@@ -30,7 +30,7 @@ else
 		CFLAGS += -I/opt/local/include
 		LIBS += -L/opt/local/lib -lSDL2 -lpthread
 	else
-		LIBS += -lbsd -lpthread
+		LIBS += -lbsd -lpthread 
 	endif
 endif
 

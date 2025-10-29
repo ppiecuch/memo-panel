@@ -1,3 +1,4 @@
+#include <linux/vt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,6 +16,7 @@
 #include <unistd.h>
 
 #include <condition_variable>
+#include <iomanip>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -108,6 +110,7 @@ void vt_activate(int con_num) {
     }
 
     ioctl(console_fd, VT_ACTIVATE, con_num);
+    ioctl(console_fd, VT_WAITACTIVE, con_num);
 }
 
 static bool is_con = is_console(STDIN_FILENO), is_safe_output = isatty(STDOUT_FILENO) && tty_is_devpts(ttyname(STDOUT_FILENO));
@@ -524,7 +527,6 @@ struct task_t {
 
 using namespace datetime_utils::crontab;
 
-bool background_running = true;
 long cron_next_schedule = 0;
 
 extern "C" void cron_run(void *arg) {
@@ -599,6 +601,9 @@ extern "C" void cron_run(void *arg) {
 
 /// memo support
 
+// Forward declarations for TTS
+void check_auto_tts();
+
 struct memo_t {
 	const char *argv0 = NULL;
 	bool running = true;
@@ -607,6 +612,11 @@ struct memo_t {
 	double elapsedTime = 9999, fileEdge = 9999; /* sec */
 	CSimpleIniA ini;
 	int refreshrate = 30; /* sec */
+	// TTS auto-speak fields
+	time_t memo_display_start = 0;  // When current memo was displayed
+	std::string last_spoken_text;    // Track what was last spoken
+	bool auto_tts_enabled = true;    // Configuration flag
+	int auto_tts_interval = 600;     // 10 minutes in seconds
 	struct seq_t {
 		std::vector<int> seq;
 		int curr = 0;
@@ -739,8 +749,19 @@ void init_memo_panel() {
 }
 
 void finish_memo_panel() {
-	background_running = false;
+	// Stop the background thread flag (fix: use correct variable)
+	memo_state.running = false;
+
+	// Wake up any waiting threads immediately to avoid blocking on join()
+	c_wait_timer.interrupt();
+	t_wait_timer.interrupt();
+
+	// Stop TTS if it's currently running
+	stop_tts();
+
+	// Wait for cron thread to exit cleanly
 	thread_handle_destroy(cron_thread);
+	cron_thread = nullptr;
 }
 
 void dump_memo_panel() {
@@ -808,6 +829,10 @@ void refresh_memo_panel() {
 				if (ConvertUTF8toWide(memo_state.line2.c_str(), res)) {
 					memo_state.line2 = trunc_wstring(simplifieDiacritics(res));
 				}
+
+				// Reset TTS timer when memo changes
+				memo_state.memo_display_start = time(NULL);
+				memo_state.last_spoken_text.clear();
 			} else {
 				key += "!";
 			}
@@ -818,6 +843,9 @@ void refresh_memo_panel() {
 	}
 	gettimeofday(&memo_state.t2, NULL);
 	memo_state.elapsedTime = memo_state.t2.tv_sec - memo_state.t1.tv_sec;
+
+	// Check if it's time to auto-speak
+	check_auto_tts();
 
 	char file_ctime[128] = { 0 };
 	if (file_exists(LOCALCACHE)) {
@@ -868,13 +896,28 @@ static const std::string TTS_USER_AGENT = "User-Agent: stagefright/1.2 (Linux;An
 class MemoTTS {
 private:
 	std::string url_encode_text(const std::string &text) {
-		std::string encoded = text;
-		std::string::size_type pos = 0;
-		while ((pos = encoded.find(" ", pos)) != std::string::npos) {
-			encoded.replace(pos, 1, "%20");
-			pos += 3;
+		std::ostringstream escaped;
+		escaped.fill('0');
+		escaped << std::hex;
+
+		for (unsigned char c : text) {
+			// Keep alphanumeric and safe characters (RFC 3986)
+			if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
+				escaped << c;
+			}
+			// Space can be encoded as '+'
+			else if (c == ' ') {
+				escaped << '+';
+			}
+			// Encode everything else as %XX
+			else {
+				escaped << std::uppercase;
+				escaped << '%' << std::setw(2) << int((unsigned char)c);
+				escaped << std::nouppercase;
+			}
 		}
-		return encoded;
+
+		return escaped.str();
 	}
 
 	bool is_mp3_file(const std::string &filename) {
@@ -893,13 +936,20 @@ private:
 			return "";
 		}
 		std::string sanitized = trunc_wstring(simplifieDiacritics(wide_text));
-		// Replace any problematic characters for filesystem
+		// Replace any problematic characters for filesystem and spaces with underscores
 		for (char &c : sanitized) {
 			if (c == '/' || c == '\\' || c == ':' || c == '*' ||
-			    c == '?' || c == '"' || c == '<' || c == '>' || c == '|') {
+			    c == '?' || c == '"' || c == '<' || c == '>' || c == '|' || c == ' ') {
 				c = '_';
 			}
 		}
+		// Trim leading and trailing underscores
+		size_t start = sanitized.find_first_not_of('_');
+		if (start == std::string::npos) {
+			return "";  // All underscores
+		}
+		size_t end = sanitized.find_last_not_of('_');
+		sanitized = sanitized.substr(start, end - start + 1);
 		return sanitized;
 	}
 
@@ -924,12 +974,74 @@ private:
 		LOG("TTS: Cleaned up cache files older than %d days\n", max_age_days);
 	}
 
+	std::vector<std::string> chunk_text(const std::string &text, size_t max_len = 200) {
+		std::vector<std::string> chunks;
+
+		if (text.length() <= max_len) {
+			chunks.push_back(text);
+			return chunks;
+		}
+
+		size_t start = 0;
+		while (start < text.length()) {
+			size_t end = start + max_len;
+
+			// Try to break at sentence/word boundary
+			if (end < text.length()) {
+				size_t last_period = text.rfind('.', end);
+				size_t last_comma = text.rfind(',', end);
+				size_t last_space = text.rfind(' ', end);
+
+				// Prefer period, then comma, then space (and include punctuation)
+				if (last_period != std::string::npos && last_period > start) {
+					end = last_period + 1;
+				} else if (last_comma != std::string::npos && last_comma > start) {
+					end = last_comma + 1;
+				} else if (last_space != std::string::npos && last_space > start) {
+					end = last_space;
+				}
+			}
+
+			std::string chunk = text.substr(start, end - start);
+			// Trim leading/trailing whitespace
+			size_t first = chunk.find_first_not_of(" \t\n\r");
+			if (first != std::string::npos) {
+				size_t last = chunk.find_last_not_of(" \t\n\r");
+				chunk = chunk.substr(first, (last - first + 1));
+			}
+
+			if (!chunk.empty()) {
+				chunks.push_back(chunk);
+			}
+
+			start = end;
+		}
+
+		return chunks;
+	}
+
 	bool download_tts_audio(const std::string &text, const std::string &language, const std::string &output_file) {
 		std::string encoded_text = url_encode_text(text);
-		std::string url = TTS_BASE_URL + encoded_text + TTS_LANG_PARAM + language + TTS_CLIENT_PARAM;
+		size_t textlen = text.length();
 
-		std::string cmd = f_ssprintf("curl -s '%s' -H '%s' -H '%s' -o '%s' 2>/dev/null",
-				url.c_str(), TTS_REFERER.c_str(), TTS_USER_AGENT.c_str(), output_file.c_str());
+		// Build proper Google TTS URL with all required parameters
+		std::string url = f_ssprintf(
+			"https://translate.google.com/translate_tts?"
+			"ie=UTF-8&"
+			"q=%s&"
+			"tl=%s&"
+			"total=1&"
+			"idx=0&"
+			"textlen=%zu&"
+			"client=tw-ob&"
+			"prev=input",
+			encoded_text.c_str(),
+			language.c_str(),
+			textlen
+		);
+
+		std::string cmd = f_ssprintf("curl -s -A '%s' -H '%s' '%s' -o '%s' 2>/dev/null",
+				TTS_USER_AGENT.c_str(), TTS_REFERER.c_str(), url.c_str(), output_file.c_str());
 
 		LOG("TTS: Downloading audio - %s\n", cmd.c_str());
 		int result = system(cmd.c_str());
@@ -977,49 +1089,71 @@ public:
 			cleanup_old_cache_files(7);  // Clean files older than 7 days
 		}
 
-		// Truncate very long text to prevent URL issues
-		std::string speech_text = text.length() > 200 ? text.substr(0, 200) + "..." : text;
-
 		// Check if language is supported
 		if (tts_lang_codes.find(language) == tts_lang_codes.end()) {
 			LOG("TTS: Unsupported language '%s', using English\n", language.c_str());
 		}
 
-		// Generate cache filename based on text and language
-		std::string sanitized_text = sanitize_filename(speech_text);
-		if (sanitized_text.empty()) {
-			LOG("TTS: Failed to sanitize text for caching\n");
-			return false;
-		}
+		// Chunk long text instead of truncating
+		std::vector<std::string> chunks = chunk_text(text, 200);
+		LOG("TTS: Split text into %zu chunks\n", chunks.size());
 
-		std::string cache_file = tts_state.cache_dir + "/" + sanitized_text + "_" + language + ".mp3";
+		bool overall_success = true;
 
-		// Check if we have a cached version
-		if (file_exists(cache_file) && is_mp3_file(cache_file)) {
-			LOG("TTS: Using cached audio file - %s\n", cache_file.c_str());
-			touch_file(cache_file);  // Update access time
-			return play_audio_file(cache_file, speed, true);
-		}
+		for (size_t i = 0; i < chunks.size(); ++i) {
+			const std::string &chunk = chunks[i];
+			LOG("TTS: Processing chunk %zu/%zu (length: %zu)\n", i + 1, chunks.size(), chunk.length());
 
-		// Download new audio to cache
-		LOG("TTS: Downloading new audio to cache - %s\n", cache_file.c_str());
-		if (!download_tts_audio(speech_text, language, cache_file)) {
-			// Fall back to temporary file if cache write fails
-			std::string tmp_file = f_ssprintf("/tmp/memo_tts_%ld.mp3", time(nullptr));
-			if (!download_tts_audio(speech_text, language, tmp_file)) {
-				return false;
+			// Generate cache filename based on chunk and language
+			std::string sanitized_text = sanitize_filename(chunk);
+			if (sanitized_text.empty()) {
+				LOG("TTS: Failed to sanitize chunk %zu for caching\n", i);
+				overall_success = false;
+				continue;
 			}
-			return play_audio_file(tmp_file, speed, false);
+
+			// Limit filename length to avoid filesystem issues
+			if (sanitized_text.length() > 100) {
+				sanitized_text = sanitized_text.substr(0, 100);
+			}
+
+			std::string cache_file = tts_state.cache_dir + "/" + sanitized_text + "_" + language + ".mp3";
+
+			// Check if we have a cached version
+			if (file_exists(cache_file) && is_mp3_file(cache_file)) {
+				LOG("TTS: Using cached audio file - %s\n", cache_file.c_str());
+				touch_file(cache_file);  // Update access time
+			} else {
+				// Download new audio to cache
+				LOG("TTS: Downloading new audio to cache - %s\n", cache_file.c_str());
+				if (!download_tts_audio(chunk, language, cache_file)) {
+					// Fall back to temporary file if cache write fails
+					std::string tmp_file = f_ssprintf("/tmp/memo_tts_%ld_%zu.mp3", time(nullptr), i);
+					if (!download_tts_audio(chunk, language, tmp_file)) {
+						LOG("TTS: Failed to download chunk %zu\n", i);
+						overall_success = false;
+						continue;
+					}
+					cache_file = tmp_file;
+				}
+
+				// Verify the downloaded file is valid MP3
+				if (!is_mp3_file(cache_file)) {
+					LOG("TTS: Downloaded file is not a valid MP3\n");
+					unlink(cache_file.c_str());
+					overall_success = false;
+					continue;
+				}
+			}
+
+			// Play the chunk
+			if (!play_audio_file(cache_file, speed, true)) {
+				LOG("TTS: Failed to play chunk %zu\n", i);
+				overall_success = false;
+			}
 		}
 
-		// Verify the downloaded file is valid MP3
-		if (!is_mp3_file(cache_file)) {
-			LOG("TTS: Downloaded file is not a valid MP3\n");
-			unlink(cache_file.c_str());
-			return false;
-		}
-
-		return play_audio_file(cache_file, speed, true);
+		return overall_success;
 	}
 
 	bool check_dependencies() {
@@ -1080,20 +1214,16 @@ void speak_text(const char *text) {
 }
 
 void speak_memo_content() {
-	std::string full_text = get_memo_line1();
-	std::string line2 = get_memo_line2();
+	// Only speak the first line (original text, not the Polish translation)
+	std::string first_line = get_memo_line1();
 
-	if (!line2.empty()) {
-		full_text += " " + line2;
-	}
-
-	if (full_text.empty()) {
+	if (first_line.empty()) {
 		LOG("TTS: No memo content to speak\n");
 		return;
 	}
 
-	LOG("TTS: Speaking memo content\n");
-	speak_text(full_text.c_str());
+	LOG("TTS: Speaking memo content (first line only)\n");
+	speak_text(first_line.c_str());
 }
 
 void set_tts_language(const char *language) {
@@ -1114,6 +1244,18 @@ void set_tts_cache_dir(const char *cache_dir) {
 	if (cache_dir && strlen(cache_dir) > 0) {
 		tts_state.cache_dir = cache_dir;
 		LOG("TTS: Cache directory set to '%s'\n", cache_dir);
+	}
+}
+
+void set_tts_enabled(bool enabled) {
+	memo_state.auto_tts_enabled = enabled;
+	LOG("TTS: Auto-speak %s\n", enabled ? "enabled" : "disabled");
+}
+
+void set_tts_auto_speak_interval(int seconds) {
+	if (seconds > 0 && seconds < 3600) {  // Max 1 hour
+		memo_state.auto_tts_interval = seconds;
+		LOG("TTS: Auto-speak interval set to %d seconds\n", seconds);
 	}
 }
 
@@ -1139,6 +1281,51 @@ void stop_tts() {
 }
 
 } // extern "C"
+
+// Auto-TTS check function (C++ implementation)
+void check_auto_tts() {
+	if (!memo_state.auto_tts_enabled) {
+		return;
+	}
+
+	// Check if TTS is available (only check once to avoid repeated checks)
+	static bool tts_checked = false;
+	static bool tts_available = false;
+	if (!tts_checked) {
+		tts_available = is_tts_available();
+		tts_checked = true;
+		if (!tts_available) {
+			LOG("TTS: Auto-TTS disabled (TTS not available)\n");
+			memo_state.auto_tts_enabled = false;
+			return;
+		}
+	}
+	if (!tts_available) {
+		return;
+	}
+
+	time_t now = time(NULL);
+	time_t elapsed = now - memo_state.memo_display_start;
+
+	// Speak after configured interval (default 10 minutes)
+	if (elapsed >= memo_state.auto_tts_interval) {
+		std::string current_text = get_memo_line1();
+		std::string line2 = get_memo_line2();
+		if (!line2.empty()) {
+			current_text += " " + line2;
+		}
+
+		// Only speak if text changed (prevent repeating)
+		if (current_text != memo_state.last_spoken_text && !current_text.empty()) {
+			LOG("TTS: Auto-speaking after %ld seconds\n", elapsed);
+			speak_text(current_text.c_str());
+			memo_state.last_spoken_text = current_text;
+		}
+
+		// Reset timer for next interval
+		memo_state.memo_display_start = now;
+	}
+}
 
 /// resources
 

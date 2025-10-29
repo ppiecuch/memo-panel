@@ -29,6 +29,7 @@
 /**********************
  *  STATIC PROTOTYPES
  **********************/
+static int apply_acceleration(int value, bool is_horizontal);
 int map(int x, int in_min, int in_max, int out_min, int out_max);
 
 /**********************
@@ -123,15 +124,15 @@ bool evdev_read(lv_indev_drv_t * drv, lv_indev_data_t * data)
         if(in.type == EV_REL) {
             if(in.code == REL_X)
 				#if EVDEV_SWAP_AXES
-					evdev_root_y += in.value;
+					evdev_root_y += apply_acceleration(in.value, true);
 				#else
-					evdev_root_x += in.value;
+					evdev_root_x += apply_acceleration(in.value, true);
 				#endif
             else if(in.code == REL_Y)
 				#if EVDEV_SWAP_AXES
-					evdev_root_x += in.value;
+					evdev_root_x += apply_acceleration(in.value, false);
 				#else
-					evdev_root_y += in.value;
+					evdev_root_y += apply_acceleration(in.value, false);
 				#endif
         } else if(in.type == EV_ABS) {
             if(in.code == ABS_X)
@@ -231,6 +232,33 @@ bool evdev_read(lv_indev_drv_t * drv, lv_indev_data_t * data)
 /**********************
  *   STATIC FUNCTIONS
  **********************/
+
+/* Apply mouse acceleration with horizontal bias */
+static int apply_acceleration(int value, bool is_horizontal)
+{
+    int abs_value = (value < 0) ? -value : value;
+    int sign = (value < 0) ? -1 : 1;
+    int result;
+
+    /* Acceleration curve: slow movements 1:1, fast movements get multiplied */
+    if (abs_value <= 2) {
+        result = abs_value;
+    } else if (abs_value <= 5) {
+        result = abs_value * 2;
+    } else if (abs_value <= 10) {
+        result = abs_value * 3;
+    } else {
+        result = abs_value * 4;
+    }
+
+    /* Apply horizontal bias - 50% more acceleration for horizontal movement */
+    if (is_horizontal) {
+        result = (result * 3) / 2;
+    }
+
+    return result * sign;
+}
+
 int map(int x, int in_min, int in_max, int out_min, int out_max)
 {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
