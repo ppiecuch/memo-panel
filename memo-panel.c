@@ -540,7 +540,7 @@ static bool custom_kb_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
 			case 'p':
 			case 'P':
 				printf("%s[INFO]%s Printing current memo entry...\n", GREEN, NORMAL_COLOR);
-				print_memo_panel();
+				print_memo_panel(true); // Bypass config when printing from keypress
 				data->key = 0;
 				break;
 			case 't':

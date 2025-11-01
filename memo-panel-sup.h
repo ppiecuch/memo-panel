@@ -42,7 +42,7 @@ void vt_activate(int con_num);
 void init_memo_panel();
 void refresh_memo_panel();
 void dump_memo_panel();
-void print_memo_panel();
+void print_memo_panel(bool bypass_config);
 void finish_memo_panel();
 
 void enable_verbose();

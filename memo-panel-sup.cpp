@@ -550,7 +550,7 @@ extern "C" void cron_run(void *arg) {
 		for (const task_t &t : tasks) {
 			if (t.task == "daily_rarely" || t.task == "weekend1_rarely" || t.task == "weekend2_rarely") {
 				LOG("Processing task %s\n", t.task.c_str());
-				print_memo_panel();
+				print_memo_panel(false); // Respect config when printing from cron
 			}
 		}
 
@@ -660,9 +660,9 @@ const static embed_image_t dividers[] = {
 	{ nullptr, nullptr, 0, 0, 0, 0 }
 };
 
-static void print_memo(const std::string &line1, const std::string &line2, int d = 0) {
-	// Check if printer is enabled
-	if (!memo_state.printer_enabled) {
+static void print_memo(const std::string &line1, const std::string &line2, int d = 0, bool bypass_config = false) {
+	// Check if printer is enabled (unless bypassing config)
+	if (!bypass_config && !memo_state.printer_enabled) {
 		LOG("Printer: Printing disabled, skipping print operation\n");
 		return;
 	}
@@ -784,7 +784,7 @@ void dump_memo_panel() {
 	printf("==================\n");
 }
 
-void print_memo_panel() {
+void print_memo_panel(bool bypass_config) {
 	CSimpleIniA::TNamesDepend sects;
 	memo_state.ini.GetAllSections(sects);
 
@@ -804,7 +804,7 @@ void print_memo_panel() {
 			std::string delimiter = "::";
 			std::string line1 = trim(s.substr(0, s.find(delimiter)));
 			std::string line2 = trim(s.substr(s.find(delimiter) + 2));
-			print_memo(line1 + "\n", line2 + "\n", 1);
+			print_memo(line1 + "\n", line2 + "\n", 1, bypass_config);
 		}
 	}
 }
