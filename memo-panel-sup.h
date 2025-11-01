@@ -59,6 +59,9 @@ void set_tts_auto_speak_interval(int seconds);
 bool is_tts_available();
 void stop_tts();
 
+// printer functions
+void set_printer_enabled(bool enabled);
+
 // integration functions
 bool is_background_running();
 void set_background_running(bool state);

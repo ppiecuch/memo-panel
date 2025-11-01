@@ -617,6 +617,8 @@ struct memo_t {
 	std::string last_spoken_text;    // Track what was last spoken
 	bool auto_tts_enabled = true;    // Configuration flag
 	int auto_tts_interval = 600;     // 10 minutes in seconds
+	// Printer configuration
+	bool printer_enabled = true;     // Configuration flag
 	struct seq_t {
 		std::vector<int> seq;
 		int curr = 0;
@@ -659,6 +661,12 @@ const static embed_image_t dividers[] = {
 };
 
 static void print_memo(const std::string &line1, const std::string &line2, int d = 0) {
+	// Check if printer is enabled
+	if (!memo_state.printer_enabled) {
+		LOG("Printer: Printing disabled, skipping print operation\n");
+		return;
+	}
+
 	const char *prnt = "/tmp/DEVTERM_PRINTER_IN";
 
 #define ASCII_ESC 27 // Escape //0x1b
@@ -1257,6 +1265,11 @@ void set_tts_auto_speak_interval(int seconds) {
 		memo_state.auto_tts_interval = seconds;
 		LOG("TTS: Auto-speak interval set to %d seconds\n", seconds);
 	}
+}
+
+void set_printer_enabled(bool enabled) {
+	memo_state.printer_enabled = enabled;
+	LOG("Printer: %s\n", enabled ? "enabled" : "disabled");
 }
 
 bool is_tts_available() {

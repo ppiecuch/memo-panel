@@ -62,6 +62,9 @@ static char *tts_language = NULL;
 static double tts_speed = 1.0;
 static char *tts_cache_dir = NULL;
 
+// Printer config options
+static cfg_bool_t printer_enabled = cfg_true;
+
 // display buffer size - not sure if this size is really needed
 #define LV_BUF_SIZE (LV_HOR_RES_MAX) * (LV_VER_RES_MAX) // 1280x480
 
@@ -391,6 +394,7 @@ static void panel_init(char *prog_name, lv_obj_t *root) {
 		CFG_SIMPLE_STR("tts_language", &tts_language),
 		CFG_SIMPLE_FLOAT("tts_speed", &tts_speed),
 		CFG_SIMPLE_STR("tts_cache_dir", &tts_cache_dir),
+		CFG_SIMPLE_BOOL("printer_enabled", &printer_enabled),
 		CFG_END()
 	};
 	cfg_t *cfg = cfg_init(opts, 0);
@@ -412,6 +416,9 @@ static void panel_init(char *prog_name, lv_obj_t *root) {
 	if (tts_cache_dir && strlen(tts_cache_dir) > 0) {
 		set_tts_cache_dir(tts_cache_dir);
 	}
+
+	// Apply printer configuration
+	set_printer_enabled(printer_enabled);
 
 	// Memo panel
 
