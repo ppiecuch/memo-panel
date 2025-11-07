@@ -543,8 +543,8 @@ static bool custom_kb_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
 				print_memo_panel(true); // Bypass config when printing from keypress
 				data->key = 0;
 				break;
-			case 't':
-			case 'T':
+			case 's':
+			case 'S':
 				if (is_tts_available()) {
 					printf("%s[INFO]%s Speaking current memo entry...\n", GREEN, NORMAL_COLOR);
 					speak_memo_content();
