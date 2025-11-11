@@ -100,7 +100,7 @@ static int open_console (void)  {
 void vt_activate(int con_num) {
     struct file_h {
         int fh = -1;
-        file_h(int fh): fh(fh) {}
+        file_h(int _fh): fh(_fh) {}
         ~file_h() { if (fh >= 0) close(fh); }
         operator const int() const { return fh; }
     } console_fd(open_console());
@@ -480,12 +480,12 @@ static bool write_file(const char *path, const void *data, int len) {
 /// simple thread wrapper
 
 struct thread_handle {
-	std::thread thrd;
+    std::thread thrd;
 	thread_handle(void (*func)(void *), void *arg) :
-			thrd([func, arg]() { func(arg); }) {}
+		thrd([func, arg]() { func(arg); }) {}
 };
 
-thread_handle_t *thread_handle_create(void (*func)(void *), void *arg) {
+thread_handle_t *thread_handle_create(void (*func)(void*), void *arg) {
 	return new thread_handle(func, arg);
 }
 
@@ -496,6 +496,52 @@ void thread_handle_destroy(thread_handle_t *handle) {
 		delete handle;
 	}
 }
+
+/// memo and tts state
+
+struct memo_t {
+	const char *argv0 = NULL;
+	bool running = true;
+	std::string line1, line2, selection, stats;
+	struct timeval t1, t2;
+	double elapsedTime = 9999, fileEdge = 9999; /* sec */
+	CSimpleIniA ini;
+	int refreshrate = 30; /* sec */
+	// Printer configuration
+	bool printer_enabled = true;     // Configuration flag
+	struct seq_t {
+		std::vector<int> seq;
+		int curr = 0;
+		void init(int span, int start = 0) { // reload
+			srand(time(NULL));
+			seq.resize(span);
+			std::iota(seq.begin(), seq.end(), start);
+			random_shuffle(seq.begin(), seq.end());
+			curr = 0;
+		}
+		void clear() { // reset
+			seq.clear();
+			curr = 0;
+		}
+		int next() { // next element
+			curr %= seq.size();
+			return seq[curr++];
+		}
+		bool empty() const { return seq.empty(); }
+		size_t size() const { return seq.size(); }
+	} seq;
+} memo_state;
+
+static struct {
+	std::string language = "en";
+	float speed = 1.0f;
+	std::string tmp_file = "/tmp/memo_tts.mp3";
+	std::string cache_dir = "tts-cache";
+	thread_handle_t *tts_thread = nullptr;
+	std::string player_cmd = "mpg321";
+	bool is_speaking = false;
+	bool enabled = true;
+} tts_state;
 
 /// internal cron implementation
 
@@ -550,7 +596,13 @@ extern "C" void cron_run(void *arg) {
 		for (const task_t &t : tasks) {
 			if (t.task == "daily_rarely" || t.task == "weekend1_rarely" || t.task == "weekend2_rarely") {
 				LOG("Processing task %s\n", t.task.c_str());
-				print_memo_panel(false); // Respect config when printing from cron
+				// Check if printer is enabled (unless bypassing config)
+				if (memo_state.printer_enabled) {
+				    print_memo_panel();
+				}
+				if (tts_state.enabled ) {
+				    speak_memo_content();
+				}
 			}
 		}
 
@@ -601,47 +653,6 @@ extern "C" void cron_run(void *arg) {
 
 /// memo support
 
-// Forward declarations for TTS
-void check_auto_tts();
-
-struct memo_t {
-	const char *argv0 = NULL;
-	bool running = true;
-	std::string line1, line2, selection, stats;
-	struct timeval t1, t2;
-	double elapsedTime = 9999, fileEdge = 9999; /* sec */
-	CSimpleIniA ini;
-	int refreshrate = 30; /* sec */
-	// TTS auto-speak fields
-	time_t memo_display_start = 0;  // When current memo was displayed
-	std::string last_spoken_text;    // Track what was last spoken
-	bool auto_tts_enabled = true;    // Configuration flag
-	int auto_tts_interval = 600;     // 10 minutes in seconds
-	// Printer configuration
-	bool printer_enabled = true;     // Configuration flag
-	struct seq_t {
-		std::vector<int> seq;
-		int curr = 0;
-		void init(int span, int start = 0) { // reload
-			srand(time(NULL));
-			seq.resize(span);
-			std::iota(seq.begin(), seq.end(), start);
-			random_shuffle(seq.begin(), seq.end());
-			curr = 0;
-		}
-		void clear() { // reset
-			seq.clear();
-			curr = 0;
-		}
-		int next() { // next element
-			curr %= seq.size();
-			return seq[curr++];
-		}
-		bool empty() const { return seq.empty(); }
-		size_t size() const { return seq.size(); }
-	} seq;
-} memo_state;
-
 bool is_background_running() { return memo_state.running; }
 void set_argv0(const char *argv0) { memo_state.argv0 = argv0; }
 const char *get_stats() { return memo_state.stats.c_str(); }
@@ -660,13 +671,7 @@ const static embed_image_t dividers[] = {
 	{ nullptr, nullptr, 0, 0, 0, 0 }
 };
 
-static void print_memo(const std::string &line1, const std::string &line2, int d = 0, bool bypass_config = false) {
-	// Check if printer is enabled (unless bypassing config)
-	if (!bypass_config && !memo_state.printer_enabled) {
-		LOG("Printer: Printing disabled, skipping print operation\n");
-		return;
-	}
-
+static void print_memo(const std::string &line1, const std::string &line2, int d = 0) {
 	const char *prnt = "/tmp/DEVTERM_PRINTER_IN";
 
 #define ASCII_ESC 27 // Escape //0x1b
@@ -784,7 +789,7 @@ void dump_memo_panel() {
 	printf("==================\n");
 }
 
-void print_memo_panel(bool bypass_config) {
+void print_memo_panel() {
 	CSimpleIniA::TNamesDepend sects;
 	memo_state.ini.GetAllSections(sects);
 
@@ -804,7 +809,7 @@ void print_memo_panel(bool bypass_config) {
 			std::string delimiter = "::";
 			std::string line1 = trim(s.substr(0, s.find(delimiter)));
 			std::string line2 = trim(s.substr(s.find(delimiter) + 2));
-			print_memo(line1 + "\n", line2 + "\n", 1, bypass_config);
+			print_memo(line1 + "\n", line2 + "\n", 1);
 		}
 	}
 }
@@ -837,10 +842,6 @@ void refresh_memo_panel() {
 				if (ConvertUTF8toWide(memo_state.line2.c_str(), res)) {
 					memo_state.line2 = trunc_wstring(simplifieDiacritics(res));
 				}
-
-				// Reset TTS timer when memo changes
-				memo_state.memo_display_start = time(NULL);
-				memo_state.last_spoken_text.clear();
 			} else {
 				key += "!";
 			}
@@ -851,9 +852,6 @@ void refresh_memo_panel() {
 	}
 	gettimeofday(&memo_state.t2, NULL);
 	memo_state.elapsedTime = memo_state.t2.tv_sec - memo_state.t1.tv_sec;
-
-	// Check if it's time to auto-speak
-	check_auto_tts();
 
 	char file_ctime[128] = { 0 };
 	if (file_exists(LOCALCACHE)) {
@@ -882,17 +880,6 @@ static const std::map<std::string, std::string> tts_lang_codes = {
 	{ "ar", "Arabic" },
 	{ "hi", "Hindi" }
 };
-
-// TTS configuration
-static struct {
-	std::string language = "en";
-	float speed = 1.0f;
-	std::string tmp_file = "/tmp/memo_tts.mp3";
-	std::string cache_dir = "tts-cache";
-	thread_handle_t *tts_thread = nullptr;
-	std::string player_cmd = "mpg321";
-	bool is_speaking = false;
-} tts_state;
 
 // TTS URL components
 static const std::string TTS_BASE_URL = "https://translate.google.com/translate_tts?ie=UTF-8&q=";
@@ -944,10 +931,11 @@ private:
 			return "";
 		}
 		std::string sanitized = trunc_wstring(simplifieDiacritics(wide_text));
-		// Replace any problematic characters for filesystem and spaces with underscores
+		// Replace any non-ASCII, non-alphanumeric characters with underscores
+		// Only allow: a-z, A-Z, 0-9, and underscore
 		for (char &c : sanitized) {
-			if (c == '/' || c == '\\' || c == ':' || c == '*' ||
-			    c == '?' || c == '"' || c == '<' || c == '>' || c == '|' || c == ' ') {
+			if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+			      (c >= '0' && c <= '9') || c == '_')) {
 				c = '_';
 			}
 		}
@@ -974,7 +962,7 @@ private:
 		system(cmd.c_str());
 	}
 
-	void cleanup_old_cache_files(int max_age_days = 7) {
+	void cleanup_old_cache_files(int max_age_days) {
 		// Clean up cache files older than max_age_days
 		std::string cmd = f_ssprintf("find %s -name '*.mp3' -type f -mtime +%d -delete 2>/dev/null",
 				tts_state.cache_dir.c_str(), max_age_days);
@@ -1094,7 +1082,7 @@ public:
 
 		// Periodically clean up old cache files (every 100 calls)
 		if (++call_count % 100 == 0) {
-			cleanup_old_cache_files(7);  // Clean files older than 7 days
+			cleanup_old_cache_files(30);  // Clean files older than 30 days
 		}
 
 		// Check if language is supported
@@ -1185,9 +1173,8 @@ static MemoTTS tts_engine;
 
 // Background TTS thread function
 extern "C" void tts_thread_func(void *arg) {
-	std::string *text_ptr = static_cast<std::string *>(arg);
-	std::string text = *text_ptr;
-	delete text_ptr;
+	std::string text = static_cast<char *>(arg);
+	free(arg);
 
 	tts_state.is_speaking = true;
 	LOG("TTS: Starting background speech\n");
@@ -1212,11 +1199,8 @@ void speak_text(const char *text) {
 	// Stop any currently running TTS
 	stop_tts();
 
-	// Create a copy of the text for the thread
-	std::string *text_copy = new std::string(text);
-
 	// Start background TTS thread
-	tts_state.tts_thread = thread_handle_create(tts_thread_func, text_copy);
+	tts_state.tts_thread = thread_handle_create(tts_thread_func, strdup(text));
 	LOG("TTS: Started TTS thread for text: '%.50s%s'\n",
 			text, strlen(text) > 50 ? "..." : "");
 }
@@ -1256,15 +1240,8 @@ void set_tts_cache_dir(const char *cache_dir) {
 }
 
 void set_tts_enabled(bool enabled) {
-	memo_state.auto_tts_enabled = enabled;
-	LOG("TTS: Auto-speak %s\n", enabled ? "enabled" : "disabled");
-}
-
-void set_tts_auto_speak_interval(int seconds) {
-	if (seconds > 0 && seconds < 3600) {  // Max 1 hour
-		memo_state.auto_tts_interval = seconds;
-		LOG("TTS: Auto-speak interval set to %d seconds\n", seconds);
-	}
+	tts_state.enabled = enabled;
+	LOG("TTS: %s\n", enabled ? "enabled" : "disabled");
 }
 
 void set_printer_enabled(bool enabled) {
@@ -1294,51 +1271,6 @@ void stop_tts() {
 }
 
 } // extern "C"
-
-// Auto-TTS check function (C++ implementation)
-void check_auto_tts() {
-	if (!memo_state.auto_tts_enabled) {
-		return;
-	}
-
-	// Check if TTS is available (only check once to avoid repeated checks)
-	static bool tts_checked = false;
-	static bool tts_available = false;
-	if (!tts_checked) {
-		tts_available = is_tts_available();
-		tts_checked = true;
-		if (!tts_available) {
-			LOG("TTS: Auto-TTS disabled (TTS not available)\n");
-			memo_state.auto_tts_enabled = false;
-			return;
-		}
-	}
-	if (!tts_available) {
-		return;
-	}
-
-	time_t now = time(NULL);
-	time_t elapsed = now - memo_state.memo_display_start;
-
-	// Speak after configured interval (default 10 minutes)
-	if (elapsed >= memo_state.auto_tts_interval) {
-		std::string current_text = get_memo_line1();
-		std::string line2 = get_memo_line2();
-		if (!line2.empty()) {
-			current_text += " " + line2;
-		}
-
-		// Only speak if text changed (prevent repeating)
-		if (current_text != memo_state.last_spoken_text && !current_text.empty()) {
-			LOG("TTS: Auto-speaking after %ld seconds\n", elapsed);
-			speak_text(current_text.c_str());
-			memo_state.last_spoken_text = current_text;
-		}
-
-		// Reset timer for next interval
-		memo_state.memo_display_start = now;
-	}
-}
 
 /// resources
 

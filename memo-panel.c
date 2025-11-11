@@ -9,7 +9,7 @@
 #include "lvgl/lv_drivers/indev/fbkb.h"
 #else /* __linux__ */
 #if LVGL == 7
-#include "lvgl/lv_drivers/display/monitor.h"
+#include "lvgl/lv_drivers/display/monitor.r"
 #include "lvgl/lv_drivers/indev/keyboard.h"
 #include "lvgl/lv_drivers/indev/mouse.h"
 #include "lvgl/lv_drivers/indev/mousewheel.h"
@@ -57,7 +57,6 @@ static double openweather_coord[2] = { 0, 0 };
 
 // TTS config options
 static cfg_bool_t tts_enabled = cfg_true;
-static long tts_auto_speak_interval = 600;
 static char *tts_language = NULL;
 static double tts_speed = 1.0;
 static char *tts_cache_dir = NULL;
@@ -390,7 +389,6 @@ static void panel_init(char *prog_name, lv_obj_t *root) {
 		CFG_SIMPLE_STR("openweather_label", &openweather_label),
 		CFG_FLOAT_LIST("openweather_coord", "{0, 0}", CFGF_NONE),
 		CFG_SIMPLE_BOOL("tts_enabled", &tts_enabled),
-		CFG_SIMPLE_INT("tts_auto_speak_interval", &tts_auto_speak_interval),
 		CFG_SIMPLE_STR("tts_language", &tts_language),
 		CFG_SIMPLE_FLOAT("tts_speed", &tts_speed),
 		CFG_SIMPLE_STR("tts_cache_dir", &tts_cache_dir),
@@ -406,7 +404,6 @@ static void panel_init(char *prog_name, lv_obj_t *root) {
 
 	// Apply TTS configuration
 	set_tts_enabled(tts_enabled);
-	set_tts_auto_speak_interval(tts_auto_speak_interval);
 	if (tts_language && strlen(tts_language) > 0) {
 		set_tts_language(tts_language);
 	}
@@ -540,7 +537,7 @@ static bool custom_kb_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
 			case 'p':
 			case 'P':
 				printf("%s[INFO]%s Printing current memo entry...\n", GREEN, NORMAL_COLOR);
-				print_memo_panel(true); // Bypass config when printing from keypress
+				print_memo_panel();
 				data->key = 0;
 				break;
 			case 's':
