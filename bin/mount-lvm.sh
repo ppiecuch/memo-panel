@@ -34,15 +34,14 @@ MOUNT_POINT="$3"
 echo -e "${BLUE}[INFO]${NORMAL_COLOR} Starting LVM mount check for ${VG_NAME}/${LV_NAME}"
 
 # Check if required LVM tools are available
-if ! command -v vgdisplay &> /dev/null; then
-    echo -e "${RED}[ERROR]${NORMAL_COLOR} LVM tools not found. Please install lvm2 package"
-    exit 1
-fi
-
-if ! command -v pvdisplay &> /dev/null; then
-    echo -e "${RED}[ERROR]${NORMAL_COLOR} LVM tools not found. Please install lvm2 package"
-    exit 1
-fi
+echo -e "${BLUE}[INFO]${NORMAL_COLOR} Checking for LVM tools..."
+for cmd in vgdisplay pvdisplay lvdisplay pvscan vgchange lvchange vgs pvs lvs blkid; do
+    if ! command -v "$cmd" &> /dev/null; then
+        echo -e "${RED}[ERROR]${NORMAL_COLOR} LVM tool '$cmd' not found. Please install lvm2 package"
+        exit 1
+    fi
+done
+echo -e "${GREEN}[SUCCESS]${NORMAL_COLOR} All required LVM tools are available"
 
 # Scan for LVM physical volumes
 echo -e "${BLUE}[INFO]${NORMAL_COLOR} Scanning for LVM physical volumes..."
@@ -60,18 +59,13 @@ if ! vgdisplay "${VG_NAME}" > /dev/null 2>&1; then
     exit 1
 fi
 
-# Check if volume group is active
-VG_ACTIVE=$(vgs --noheadings -o vg_attr "${VG_NAME}" 2>/dev/null | awk '{print substr($1,6,1)}')
-if [ "${VG_ACTIVE}" != "z" ]; then
-    echo -e "${BLUE}[INFO]${NORMAL_COLOR} Volume group is active"
-else
-    echo -e "${YELLOW}[WARN]${NORMAL_COLOR} Volume group is not active, attempting to activate..."
-    if ! vgchange -ay "${VG_NAME}"; then
-        echo -e "${RED}[ERROR]${NORMAL_COLOR} Failed to activate volume group '${VG_NAME}'"
-        exit 1
-    fi
-    echo -e "${GREEN}[SUCCESS]${NORMAL_COLOR} Volume group activated"
+# Ensure volume group is active (vgchange -ay is idempotent)
+echo -e "${BLUE}[INFO]${NORMAL_COLOR} Activating volume group..."
+if ! vgchange -ay "${VG_NAME}" > /dev/null 2>&1; then
+    echo -e "${RED}[ERROR]${NORMAL_COLOR} Failed to activate volume group '${VG_NAME}'"
+    exit 1
 fi
+echo -e "${GREEN}[SUCCESS]${NORMAL_COLOR} Volume group is active"
 
 # Check physical volumes in the volume group
 echo -e "${BLUE}[INFO]${NORMAL_COLOR} Checking physical volumes for volume group..."
@@ -102,18 +96,13 @@ if ! lvdisplay "${VG_NAME}/${LV_NAME}" > /dev/null 2>&1; then
     exit 1
 fi
 
-# Check if logical volume is active
-LV_ACTIVE=$(lvs --noheadings -o lv_attr "${VG_NAME}/${LV_NAME}" 2>/dev/null | awk '{print substr($1,5,1)}')
-if [ "${LV_ACTIVE}" = "a" ]; then
-    echo -e "${GREEN}[SUCCESS]${NORMAL_COLOR} Logical volume is active"
-else
-    echo -e "${YELLOW}[WARN]${NORMAL_COLOR} Logical volume is not active, attempting to activate..."
-    if ! lvchange -ay "${VG_NAME}/${LV_NAME}"; then
-        echo -e "${RED}[ERROR]${NORMAL_COLOR} Failed to activate logical volume '${VG_NAME}/${LV_NAME}'"
-        exit 1
-    fi
-    echo -e "${GREEN}[SUCCESS]${NORMAL_COLOR} Logical volume activated"
+# Ensure logical volume is active (lvchange -ay is idempotent)
+echo -e "${BLUE}[INFO]${NORMAL_COLOR} Activating logical volume..."
+if ! lvchange -ay "${VG_NAME}/${LV_NAME}" > /dev/null 2>&1; then
+    echo -e "${RED}[ERROR]${NORMAL_COLOR} Failed to activate logical volume '${VG_NAME}/${LV_NAME}'"
+    exit 1
 fi
+echo -e "${GREEN}[SUCCESS]${NORMAL_COLOR} Logical volume is active"
 
 # Get device path
 LV_PATH="/dev/${VG_NAME}/${LV_NAME}"
