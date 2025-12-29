@@ -82,7 +82,7 @@ if [ "${PV_COUNT}" -eq 0 ]; then
 fi
 
 echo -e "${GREEN}[SUCCESS]${NORMAL_COLOR} Found ${PV_COUNT} physical volume(s) for volume group '${VG_NAME}'"
-pvs --noheadings -o pv_name,pv_size,pv_used -S vg_name="${VG_NAME}" 2>/dev/null | while read line; do
+pvs --noheadings -o pv_name,pv_size,pv_used -S vg_name="${VG_NAME}" 2>/dev/null | while read -r line; do
     echo -e "${BLUE}[INFO]${NORMAL_COLOR}   PV: ${line}"
 done
 
