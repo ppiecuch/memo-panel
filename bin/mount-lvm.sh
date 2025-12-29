@@ -14,7 +14,7 @@ RED="\033[31m"
 YELLOW="\033[33m"
 
 # Check if running as root
-if [[ $EUID -ne 0 ]]; then
+if [[ $EUID != 0 ]]; then
    echo -e "${RED}[ERROR]${NORMAL_COLOR} This script must be run as root"
    exit 1
 fi
@@ -76,9 +76,12 @@ if [ "${PV_COUNT}" -eq 0 ]; then
 fi
 
 echo -e "${GREEN}[SUCCESS]${NORMAL_COLOR} Found ${PV_COUNT} physical volume(s) for volume group '${VG_NAME}'"
-pvs --noheadings -o pv_name,pv_size,pv_used -S vg_name="${VG_NAME}" 2>/dev/null | while read -r line; do
-    echo -e "${BLUE}[INFO]${NORMAL_COLOR}   PV: ${line}"
-done
+# Display physical volume details if available
+if PV_INFO=$(pvs --noheadings -o pv_name,pv_size,pv_used -S vg_name="${VG_NAME}" 2>/dev/null); then
+    echo "${PV_INFO}" | while read -r line; do
+        echo -e "${BLUE}[INFO]${NORMAL_COLOR}   PV: ${line}"
+    done
+fi
 
 # Check if all physical volumes are available and healthy
 PV_MISSING=$(vgs --noheadings -o vg_missing_pv_count "${VG_NAME}" 2>/dev/null | tr -d ' ')
